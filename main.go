@@ -1,6 +1,9 @@
 package main
 
 import (
+	"TeacherBot/handlers"
+	"TeacherBot/logger"
+	"fmt"
 	"log"
 	"os"
 
@@ -9,36 +12,47 @@ import (
 )
 
 func main() {
-	//Подтягиваем переменные окружения
-	err := godotenv.Load()
+	//Создаём логер
+	logger, logFileClose, err := logger.NewLogger("INFO")
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		panic(err)
+	}
+	defer logFileClose()
+	//Подтягиваем переменные окружения
+	err = godotenv.Load()
+	if err != nil {
+		logger.Error("Error loading .env file")
+		panic(err)
 	}
 	// Инициализируем бот
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("BOT_TOKEN"))
 	if err != nil {
+		logger.Error("Failed to initialize bot")
 		log.Panic(err)
 	}
-	//Выстовляем уровень логирования бота Debug
-	bot.Debug = true
+
 	//Логируем соощеие об успешной инициализации бота
-	log.Printf("Authorized on account %s", bot.Self.UserName)
+	logger.Info(fmt.Sprintf("Authorized on account %s", bot.Self.UserName))
 	//Создаём обдейт конфиг
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 	//Создаём канал куда будут приходить обновления пользователей
 	updates, _ := bot.GetUpdatesChan(u)
-	//Проходим циклом по каналу и проверяем нет ли новых сообщений от пользователя
 	for update := range updates {
-		if update.Message != nil { // Пришло новое сообщение
-			//Логируем имя автора и текст сообщения
-			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-			//Создаём новое сообщение
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-			//означает что наше сообщение будет направлено ответом на сообщеия польователя
-			msg.ReplyToMessageID = update.Message.MessageID
-			//Отправляем сообщение
-			bot.Send(msg)
+		// Обрабатываем callback от инлайн кнопок
+		if update.CallbackQuery != nil {
+			handlers.HandleCallback(logger)
+			continue
+		}
+		// Проверяем обычные сообщения
+		if update.Message != nil {
+			handlers.HandleMesage(logger)
+			continue
+		}
+		// Проверяем получения изображения
+		if len(*update.Message.Photo) > 0 {
+			handlers.SavePhoto(logger)
+			continue
 		}
 	}
 }
