@@ -2,20 +2,27 @@ package models
 
 import (
 	"sync"
+	"time"
 
 	"github.com/tigusigalpa/gigachat-go"
 )
 
 // Состояние пользователя
 type UserState struct {
-	CurrentMenu string            // текущее меню
-	Data        map[string]string // дополнительные данные
+	CurrentMenu    string              // текущее меню
+	Data           map[string]string   // дополнительные данные
+	Conversation   []gigachat.Message  // переписка с чатом
+	UserAnswers    []string            //ответы пользователя
+	CorrectAnswers []string            //правельные ответы
+	AllQuestions   []string            //тест 10 вопросов
+	UserLastPress  map[int64]time.Time //Хранилище времени последнего нажатия
 }
 
 func NewUserState() UserState {
 	return UserState{
-		CurrentMenu: "main",
-		Data:        make(map[string]string),
+		CurrentMenu:   "main",
+		Data:          make(map[string]string),
+		UserLastPress: make(map[int64]time.Time),
 	}
 }
 
@@ -37,4 +44,9 @@ func (bc *BotContext) SetUserState(userID int64, state UserState) {
 	defer bc.Mtx.Unlock()
 
 	bc.UserStates[userID] = state
+}
+func (bc *BotContext) GetUserStattes() map[int64]UserState {
+	bc.Mtx.RLock()
+	defer bc.Mtx.RUnlock()
+	return bc.UserStates
 }

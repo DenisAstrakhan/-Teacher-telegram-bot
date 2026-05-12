@@ -138,6 +138,19 @@ func ShowAdvancMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Lo
 
 	sendMenu(bot, update, "Выберите тему", keyboard, logger)
 }
+func ShowTestMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, logger *zap.Logger) {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("A", "A"),
+			tgbotapi.NewInlineKeyboardButtonData("B", "B"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("C", "C"),
+			tgbotapi.NewInlineKeyboardButtonData("D", "D"),
+		),
+	)
+	sendMenu(bot, update, Caption, keyboard, logger)
+}
 func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyboard tgbotapi.InlineKeyboardMarkup, logger *zap.Logger) {
 	var chatID int64
 	if update.Message == nil {

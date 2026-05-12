@@ -5,6 +5,7 @@ import (
 	"TeacherBot/menu"
 	"TeacherBot/models"
 	"fmt"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
@@ -13,7 +14,7 @@ import (
 func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext) {
 	// Отвечаем на callback (убираем "часики")
 	bot.Send(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
-	userStates := BotContext.UserStates
+	userStates := BotContext.GetUserStattes()
 	userID := update.CallbackQuery.From.ID
 	data := update.CallbackQuery.Data
 	logger.Info(fmt.Sprintf("User ID - %v: press \"%s\" ", userID, data))
@@ -23,6 +24,15 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 		logger.Info(fmt.Sprintf("New User: ID - %v, Name: %s", userID, update.CallbackQuery.From.FirstName))
 	}
 	state := userStates[userID]
+	//Защита от повторного нажатий
+	BotContext.Mtx.Lock()
+	if time.Since(state.UserLastPress[userID]) < 1000*time.Millisecond {
+		logger.Warn(fmt.Sprintf("User ID - %v: press again", userID))
+		BotContext.Mtx.Unlock()
+		return
+	}
+	state.UserLastPress[userID] = time.Now()
+	BotContext.Mtx.Unlock()
 	// Обработка callback данных
 	switch data {
 	case "simple":
@@ -170,6 +180,26 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 			logger.Warn(fmt.Sprintf("User ID - %v: Failed to distribute Topic5 across levels ", userID))
 			return
 		}
+	case "A":
+		state.UserAnswers = append(state.UserAnswers, "A")
+		BotContext.SetUserState(userID, state)
+		gchat.SimpleTest(bot, update, BotContext, logger)
+		return
+	case "B":
+		state.UserAnswers = append(state.UserAnswers, "B")
+		BotContext.SetUserState(userID, state)
+		gchat.SimpleTest(bot, update, BotContext, logger)
+		return
+	case "C":
+		state.UserAnswers = append(state.UserAnswers, "C")
+		BotContext.SetUserState(userID, state)
+		gchat.SimpleTest(bot, update, BotContext, logger)
+		return
+	case "D":
+		state.UserAnswers = append(state.UserAnswers, "D")
+		BotContext.SetUserState(userID, state)
+		gchat.SimpleTest(bot, update, BotContext, logger)
+		return
 	default:
 		logger.Info(fmt.Sprintf("User ID - %v: Failed to process callback", userID))
 		menu.ShowStartMenu(bot, update, logger)

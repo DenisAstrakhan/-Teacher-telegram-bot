@@ -16,7 +16,8 @@ func HandleMesage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upda
 	text := update.Message.Text
 	logger.Info(fmt.Sprintf("User ID - %v: message \"%s\" ", userID, text))
 	// Инициализируем состояние пользователя
-	state, exists := BotContext.UserStates[userID]
+	userStates := BotContext.GetUserStattes()
+	state, exists := userStates[userID]
 	if !exists {
 		logger.Info(fmt.Sprintf("Add New User: ID - %v", userID))
 		state = models.UserState{
