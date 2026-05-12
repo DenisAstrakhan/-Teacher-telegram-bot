@@ -1,21 +1,36 @@
 package handlers
 
 import (
+	"TeacherBot/menu"
+	"TeacherBot/models"
 	"fmt"
 	"strings"
 
 	sensitive "github.com/LuYongwang/go-sensitive-word"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 )
 
-func HandleMesage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+func HandleMesage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext) {
 	userID := update.Message.Chat.ID
 	text := update.Message.Text
 	logger.Info(fmt.Sprintf("User ID - %v: message \"%s\" ", userID, text))
+	// Инициализируем состояние пользователя
+	state, exists := BotContext.UserStates[userID]
+	if !exists {
+		logger.Info(fmt.Sprintf("Add New User: ID - %v", userID))
+		state = models.UserState{
+			CurrentMenu: "main",
+			Data:        make(map[string]string),
+		}
+		state.Data["subject"] = ""
+		state.Data["Topic"] = ""
+		state.Data["level"] = ""
+	}
 	// Обработка команд
 	switch text {
 	case "/start":
+		menu.ShowStartMenu(bot, update, logger)
 		return
 	default:
 		if !validationMessage(text, userID, logger) {

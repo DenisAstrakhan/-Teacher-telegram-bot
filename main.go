@@ -3,11 +3,12 @@ package main
 import (
 	"TeacherBot/handlers"
 	"TeacherBot/logger"
+	"TeacherBot/models"
 	"fmt"
 	"log"
 	"os"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 )
 
@@ -24,6 +25,7 @@ func main() {
 		logger.Error("Error loading .env file")
 		panic(err)
 	}
+	BotContext := models.NewBotContext()
 	// Инициализируем бот
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("BOT_TOKEN"))
 	if err != nil {
@@ -37,20 +39,20 @@ func main() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 	//Создаём канал куда будут приходить обновления пользователей
-	updates, _ := bot.GetUpdatesChan(u)
+	updates := bot.GetUpdatesChan(u)
 	for update := range updates {
 		// Обрабатываем callback от инлайн кнопок
 		if update.CallbackQuery != nil {
-			handlers.HandleCallback(logger)
+			handlers.HandleCallback(logger, bot, update, BotContext)
 			continue
 		}
 		// Проверяем обычные сообщения
 		if update.Message != nil {
-			handlers.HandleMesage(logger, bot, update)
+			handlers.HandleMesage(logger, bot, update, BotContext)
 			continue
 		}
 		// Проверяем получения изображения
-		if len(*update.Message.Photo) > 0 {
+		if len(update.Message.Photo) > 0 {
 			handlers.SavePhoto(logger)
 			continue
 		}
