@@ -1,6 +1,7 @@
 package main
 
 import (
+	gchat "TeacherBot/gigachat"
 	"TeacherBot/handlers"
 	"TeacherBot/logger"
 	"TeacherBot/models"
@@ -25,7 +26,9 @@ func main() {
 		logger.Error("Error loading .env file")
 		panic(err)
 	}
-	BotContext := models.NewBotContext()
+	// Создаём Giga chat клиента
+	GigaChat := gchat.StartBot()
+	BotContext := models.NewBotContext(GigaChat)
 	// Инициализируем бот
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("BOT_TOKEN"))
 	if err != nil {

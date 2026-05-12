@@ -1,6 +1,10 @@
 package models
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/tigusigalpa/gigachat-go"
+)
 
 // Состояние пользователя
 type UserState struct {
@@ -16,12 +20,14 @@ func NewUserState() UserState {
 }
 
 type BotContext struct {
+	GigaChat   *gigachat.Client    // клиент подключения к Giga Chat
 	UserStates map[int64]UserState //хранилище состояний пользователей
 	Mtx        sync.RWMutex        // для потокобезопасного доступа к UserStates и Giga Chat
 }
 
-func NewBotContext() *BotContext {
+func NewBotContext(client *gigachat.Client) *BotContext {
 	return &BotContext{
+		GigaChat:   client,
 		UserStates: make(map[int64]UserState),
 		Mtx:        sync.RWMutex{},
 	}

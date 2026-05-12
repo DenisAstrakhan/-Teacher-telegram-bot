@@ -7,16 +7,6 @@ import (
 	"go.uber.org/zap"
 )
 
-func getChatID(update tgbotapi.Update) int64 {
-	var chatID int64
-	if update.Message == nil {
-		chatID = update.CallbackQuery.From.ID
-		return chatID
-	}
-	chatID = update.Message.Chat.ID
-	return chatID
-}
-
 func ShowStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger) {
 	// Создаем инлайн клавиатуру
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
@@ -149,7 +139,13 @@ func ShowAdvancMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Lo
 	sendMenu(bot, update, "Выберите тему", keyboard, logger)
 }
 func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyboard tgbotapi.InlineKeyboardMarkup, logger *zap.Logger) {
-	chatID := getChatID(update)
+	var chatID int64
+	if update.Message == nil {
+		chatID = update.CallbackQuery.From.ID
+	} else {
+		chatID = update.Message.Chat.ID
+	}
+
 	photoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath("Image/start.jpg"))
 	photoMsg.Caption = Caption
 	photoMsg.ReplyMarkup = keyboard
