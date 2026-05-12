@@ -13,7 +13,7 @@ import (
 
 func main() {
 	//Создаём логер
-	logger, logFileClose, err := logger.NewLogger("INFO")
+	logger, logFileClose, err := logger.NewLogger("DEBUG")
 	if err != nil {
 		panic(err)
 	}
@@ -46,7 +46,7 @@ func main() {
 		}
 		// Проверяем обычные сообщения
 		if update.Message != nil {
-			handlers.HandleMesage(logger)
+			handlers.HandleMesage(logger, bot, update)
 			continue
 		}
 		// Проверяем получения изображения

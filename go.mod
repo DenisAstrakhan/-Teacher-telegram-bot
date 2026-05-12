@@ -3,6 +3,7 @@ module TeacherBot
 go 1.25.4
 
 require (
+	github.com/LuYongwang/go-sensitive-word v1.1.0
 	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
 	github.com/joho/godotenv v1.5.1
 	go.uber.org/zap v1.28.0
