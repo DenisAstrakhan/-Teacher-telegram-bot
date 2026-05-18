@@ -54,6 +54,11 @@ func main() {
 			handlers.SavePhoto(bot, update, logger)
 			continue
 		}
+		//Проверяем звуковые сообщения
+		if update.Message.Voice != nil {
+			handlers.SaveVoice(bot, update, logger)
+			continue
+		}
 		// Проверяем обычные сообщения
 		if update.Message != nil {
 			handlers.HandleMessage(logger, bot, update, BotContext)
