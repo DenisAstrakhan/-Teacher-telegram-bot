@@ -61,6 +61,8 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *m
 	//Проверяем счёт
 	if _, exists := state.Data["score"]; !exists {
 		//Пользователь только начал тест
+		msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
+		bot.Send(msgToDelete)
 		logger.Info(fmt.Sprintf("User ID - %v: Is at the beginning of the test", userID))
 		state.Data["score"] = "0"
 		// Создаём "учителя" с памятью о ходе теста
@@ -188,7 +190,8 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models
 }
 func SelectSubject(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext) {
 	userID := getUserID(update)
-	state := BotContext.UserStates[userID]
+	states := BotContext.GetUserStattes()
+	state := states[userID]
 	state.Data["subject"] = ""
 	msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
 	bot.Send(msgToDelete)

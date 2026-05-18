@@ -49,15 +49,16 @@ func main() {
 			handlers.HandleCallback(logger, bot, update, BotContext)
 			continue
 		}
+		// Проверяем получения изображения
+		if len(update.Message.Photo) > 0 {
+			handlers.SavePhoto(bot, update, logger)
+			continue
+		}
 		// Проверяем обычные сообщения
 		if update.Message != nil {
 			handlers.HandleMessage(logger, bot, update, BotContext)
 			continue
 		}
-		// Проверяем получения изображения
-		if len(update.Message.Photo) > 0 {
-			handlers.SavePhoto(logger)
-			continue
-		}
+
 	}
 }
