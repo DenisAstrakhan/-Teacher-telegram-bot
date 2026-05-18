@@ -158,7 +158,8 @@ func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyb
 		chatID = update.CallbackQuery.From.ID
 		userStates := BotContext.GetUserStattes()
 		state := userStates[chatID]
-		editMessage := tgbotapi.NewEditMessageCaption(chatID, state.MessageID, Caption)
+		logger.Debug(fmt.Sprintf("MessageID: %v", state.MessageID))
+		editMessage := tgbotapi.NewEditMessageText(chatID, state.MessageID, Caption)
 		editMessage.ReplyMarkup = &keyboard
 		_, err := bot.Send(editMessage)
 		if err != nil {
@@ -177,10 +178,13 @@ func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyb
 		sendMessage, err := bot.Send(photoMsg)
 		if err != nil {
 			// Если фото не отправилось (файл не найден), отправляем только текст
-			logger.Error(fmt.Sprintf("Ошибка отправки фото: %v", err))
+			logger.Error(fmt.Sprintf("Error send photo: %v", err))
 			textMsg := tgbotapi.NewMessage(chatID, Caption)
 			textMsg.ReplyMarkup = keyboard
-			bot.Send(textMsg)
+			sendMessage, _ = bot.Send(textMsg)
+			state.MessageID = sendMessage.MessageID
+			BotContext.SetUserState(chatID, state)
+			return
 		}
 
 		state.MessageID = sendMessage.MessageID
