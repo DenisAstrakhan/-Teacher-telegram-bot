@@ -38,13 +38,24 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 	case "simple":
 		state.CurrentMenu = "simple"
 		state.Data["test"] = "simple"
+		if state.Data["subject"] != "" && state.Data["Topic"] != "" && state.Data["level"] != "" {
+			BotContext.SetUserState(userID, state)
+			gchat.StartTest(bot, update, BotContext, logger)
+			return
+		}
 		menu.ShowLevelMenu(bot, update, logger, BotContext)
 	case "interactive":
 		state.CurrentMenu = "interactive"
 		state.Data["test"] = "interactive"
+		if state.Data["subject"] != "" && state.Data["Topic"] != "" && state.Data["level"] != "" {
+			BotContext.SetUserState(userID, state)
+			gchat.StartTest(bot, update, BotContext, logger)
+			return
+		}
 		menu.ShowLevelMenu(bot, update, logger, BotContext)
 	case "settings":
-
+		gchat.SelectSubject(bot, update, BotContext)
+		return
 	case "back":
 		goBack(bot, update, BotContext, logger)
 		return

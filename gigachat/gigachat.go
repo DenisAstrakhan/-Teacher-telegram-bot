@@ -186,6 +186,16 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models
 	BotContext.SetUserState(userID, state)
 	menu.ShowTestMenu(bot, update, question, logger, BotContext)
 }
+func SelectSubject(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext) {
+	userID := getUserID(update)
+	state := BotContext.UserStates[userID]
+	state.Data["subject"] = ""
+	msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
+	bot.Send(msgToDelete)
+	BotContext.SetUserState(userID, state)
+	msg := tgbotapi.NewMessage(userID, "Напишите школьный предмет для которого нужно создать тест")
+	bot.Send(msg)
+}
 func parseScoreDigit(input string) (int, bool) {
 	re := regexp.MustCompile(`--SCORE--\s*(\d+)`)
 	matches := re.FindStringSubmatch(input)

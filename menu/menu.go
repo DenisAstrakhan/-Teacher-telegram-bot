@@ -152,6 +152,17 @@ func ShowTestMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, 
 	)
 	sendMenu(bot, update, Caption, keyboard, logger, BotContext)
 }
+func ShowSetingMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📝 Простой тест", "simple"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📝 Интерактивный тест", "interactive"),
+		),
+	)
+	sendMenu(bot, update, "Выберите тип теста", keyboard, logger, BotContext)
+}
 func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyboard tgbotapi.InlineKeyboardMarkup, logger *zap.Logger, BotContext *models.BotContext) {
 	var chatID int64
 	if update.Message == nil {
@@ -159,7 +170,16 @@ func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyb
 		userStates := BotContext.GetUserStattes()
 		state := userStates[chatID]
 		logger.Debug(fmt.Sprintf("MessageID: %v", state.MessageID))
-		editMessage := tgbotapi.NewEditMessageText(chatID, state.MessageID, Caption)
+		if _, exist := state.Data["nopoto"]; exist {
+			editMessage := tgbotapi.NewEditMessageText(chatID, state.MessageID, Caption)
+			editMessage.ReplyMarkup = &keyboard
+			_, err := bot.Send(editMessage)
+			if err != nil {
+				logger.Debug(fmt.Sprintf("Error edit photo message: %v", err))
+			}
+			return
+		}
+		editMessage := tgbotapi.NewEditMessageCaption(chatID, state.MessageID, Caption)
 		editMessage.ReplyMarkup = &keyboard
 		_, err := bot.Send(editMessage)
 		if err != nil {
@@ -183,6 +203,7 @@ func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyb
 			textMsg.ReplyMarkup = keyboard
 			sendMessage, _ = bot.Send(textMsg)
 			state.MessageID = sendMessage.MessageID
+			state.Data["nopoto"] = ""
 			BotContext.SetUserState(chatID, state)
 			return
 		}

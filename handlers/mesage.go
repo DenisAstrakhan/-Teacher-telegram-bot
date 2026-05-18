@@ -41,12 +41,27 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		if _, exists := state.Data["score"]; exists {
 			// Пользователь проходит интерактивный тест
 			logger.Info(fmt.Sprintf("User ID - %v interactive test message: %s ", userID, text))
-			if state.Data["test"] == "interactive" {
-				gchat.InteractiveTest(bot, update, BotContext, logger)
-				return
-			}
+			gchat.InteractiveTest(bot, update, BotContext, logger)
+			return
 		}
-		return
+		if state.Data["subject"] == "" {
+			//Пользователь выбирает предмет теста
+			logger.Info(fmt.Sprintf("User ID - %v selected subject test: %s ", userID, text))
+			state.Data["subject"] = text
+			BotContext.SetUserState(userID, state)
+			msg := tgbotapi.NewMessage(userID, "Напишите тему теста")
+			bot.Send(msg)
+			return
+		}
+		if state.Data["Topic"] == "" && state.Data["subject"] != "" {
+			//Пользователь выбирает тему теста
+			logger.Info(fmt.Sprintf("User ID - %v selected topic test: %s ", userID, text))
+			state.Data["Topic"] = text
+			state.Data["level"] = "Базовый"
+			state.MessageID = 0
+			BotContext.SetUserState(userID, state)
+			menu.ShowSetingMenu(bot, update, logger, BotContext)
+		}
 	}
 }
 func validationMessage(text string, userID int64, logger *zap.Logger) bool {
