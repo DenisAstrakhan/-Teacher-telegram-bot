@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	gchat "TeacherBot/gigachat"
 	"TeacherBot/menu"
 	"TeacherBot/models"
 	"fmt"
@@ -11,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func HandleMesage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext) {
+func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext) {
 	userID := update.Message.Chat.ID
 	text := update.Message.Text
 	logger.Info(fmt.Sprintf("User ID - %v: message \"%s\" ", userID, text))
@@ -20,18 +21,16 @@ func HandleMesage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upda
 	state, exists := userStates[userID]
 	if !exists {
 		logger.Info(fmt.Sprintf("Add New User: ID - %v", userID))
-		state = models.UserState{
-			CurrentMenu: "main",
-			Data:        make(map[string]string),
-		}
+		state = models.NewUserState()
 		state.Data["subject"] = ""
 		state.Data["Topic"] = ""
 		state.Data["level"] = ""
+		BotContext.SetUserState(userID, state)
 	}
 	// Обработка команд
 	switch text {
 	case "/start":
-		menu.ShowStartMenu(bot, update, logger)
+		menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
 		return
 	default:
 		if !validationMessage(text, userID, logger) {
@@ -39,6 +38,14 @@ func HandleMesage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upda
 			return
 		}
 		logger.Debug("Коректный ввод")
+		if _, exists := state.Data["score"]; exists {
+			// Пользователь проходит интерактивный тест
+			logger.Info(fmt.Sprintf("User ID - %v interactive test message: %s ", userID, text))
+			if state.Data["test"] == "interactive" {
+				gchat.InteractiveTest(bot, update, BotContext, logger)
+				return
+			}
+		}
 		return
 	}
 }

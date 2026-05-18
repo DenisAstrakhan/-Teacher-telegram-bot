@@ -51,7 +51,7 @@ func main() {
 		}
 		// Проверяем обычные сообщения
 		if update.Message != nil {
-			handlers.HandleMesage(logger, bot, update, BotContext)
+			handlers.HandleMessage(logger, bot, update, BotContext)
 			continue
 		}
 		// Проверяем получения изображения

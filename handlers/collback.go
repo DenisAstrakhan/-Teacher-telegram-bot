@@ -38,11 +38,11 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 	case "simple":
 		state.CurrentMenu = "simple"
 		state.Data["test"] = "simple"
-		menu.ShowLevelMenu(bot, update, logger)
+		menu.ShowLevelMenu(bot, update, logger, BotContext)
 	case "interactive":
 		state.CurrentMenu = "interactive"
 		state.Data["test"] = "interactive"
-		menu.ShowLevelMenu(bot, update, logger)
+		menu.ShowLevelMenu(bot, update, logger, BotContext)
 	case "settings":
 
 	case "back":
@@ -51,15 +51,15 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 	case "Beginner":
 		state.CurrentMenu = "Beginner"
 		state.Data["level"] = "Beginner"
-		menu.ShowBeginnerMenu(bot, update, logger)
+		menu.ShowBeginnerMenu(bot, update, logger, BotContext)
 	case "Intermediate":
 		state.CurrentMenu = "Intermediate"
 		state.Data["level"] = "Intermediate"
-		menu.ShowIntermediateMenu(bot, update, logger)
+		menu.ShowIntermediateMenu(bot, update, logger, BotContext)
 	case "Advanc":
 		state.CurrentMenu = "Advanc"
 		state.Data["level"] = "Advanc"
-		menu.ShowAdvancMenu(bot, update, logger)
+		menu.ShowAdvancMenu(bot, update, logger, BotContext)
 	case "Topic1":
 		switch state.Data["level"] {
 		case "Beginner":
@@ -202,7 +202,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 		return
 	default:
 		logger.Info(fmt.Sprintf("User ID - %v: Failed to process callback", userID))
-		menu.ShowStartMenu(bot, update, logger)
+		menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
 	}
 	BotContext.SetUserState(userID, state)
 }
@@ -213,12 +213,12 @@ func goBack(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.Bot
 	switch state.CurrentMenu {
 	case "simple", "interactive":
 		state.CurrentMenu = "main"
-		menu.ShowStartMenu(bot, update, logger)
+		menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
 	case "Beginner", "Intermediate", "Advanc":
 		state.CurrentMenu = state.Data["test"]
-		menu.ShowLevelMenu(bot, update, logger)
+		menu.ShowLevelMenu(bot, update, logger, BotContext)
 	default:
-		menu.ShowStartMenu(bot, update, logger)
+		menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
 		state.CurrentMenu = "main"
 	}
 

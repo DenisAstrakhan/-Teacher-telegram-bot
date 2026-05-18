@@ -11,6 +11,7 @@ import (
 type UserState struct {
 	CurrentMenu    string              // текущее меню
 	Data           map[string]string   // дополнительные данные
+	MessageID      int                 //ID сообщения для изменения
 	Conversation   []gigachat.Message  // переписка с чатом
 	UserAnswers    []string            //ответы пользователя
 	CorrectAnswers []string            //правельные ответы
@@ -23,6 +24,7 @@ func NewUserState() UserState {
 		CurrentMenu:   "main",
 		Data:          make(map[string]string),
 		UserLastPress: make(map[int64]time.Time),
+		MessageID:     0,
 	}
 }
 
