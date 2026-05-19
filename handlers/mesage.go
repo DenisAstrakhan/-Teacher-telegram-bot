@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	gchat "TeacherBot/gigachat"
 	"TeacherBot/menu"
 	"TeacherBot/models"
 	"fmt"
@@ -11,34 +12,64 @@ import (
 	"go.uber.org/zap"
 )
 
-func HandleMesage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext) {
+func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext) {
 	userID := update.Message.Chat.ID
 	text := update.Message.Text
 	logger.Info(fmt.Sprintf("User ID - %v: message \"%s\" ", userID, text))
 	// Инициализируем состояние пользователя
-	state, exists := BotContext.UserStates[userID]
+	userStates := BotContext.GetUserStattes()
+	state, exists := userStates[userID]
 	if !exists {
 		logger.Info(fmt.Sprintf("Add New User: ID - %v", userID))
-		state = models.UserState{
-			CurrentMenu: "main",
-			Data:        make(map[string]string),
-		}
+		state = models.NewUserState()
 		state.Data["subject"] = ""
 		state.Data["Topic"] = ""
 		state.Data["level"] = ""
+		BotContext.SetUserState(userID, state)
 	}
 	// Обработка команд
 	switch text {
 	case "/start":
-		menu.ShowStartMenu(bot, update, logger)
+		menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
 		return
 	default:
 		if !validationMessage(text, userID, logger) {
-			logger.Debug("Некоректный ввод")
+			logger.Debug("Uncorrect input")
+			logger.Debug(fmt.Sprintf("Message ID to delete: %v", state.MessageID))
+			msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
+			bot.Send(msgToDelete)
+			state.MessageID = 0
+			BotContext.SetUserState(userID, state)
+			menu.ShowWarningMenu(bot, update, logger, BotContext)
 			return
 		}
-		logger.Debug("Коректный ввод")
-		return
+		logger.Debug("Correct input")
+		if _, exists := state.Data["score"]; exists {
+			// Пользователь проходит интерактивный тест
+			logger.Info(fmt.Sprintf("User ID - %v interactive test message: %s ", userID, text))
+			gchat.InteractiveTest(bot, update, BotContext, logger)
+			return
+		}
+		if state.CurrentMenu == "setting" && state.Data["subject"] == "" {
+			//Пользователь выбирает предмет теста
+			logger.Info(fmt.Sprintf("User ID - %v selected subject test: %s ", userID, text))
+			state.Data["subject"] = text
+			BotContext.SetUserState(userID, state)
+			msg := tgbotapi.NewMessage(userID, "Напишите тему теста")
+			bot.Send(msg)
+			return
+		}
+		if state.CurrentMenu == "setting" && state.Data["Topic"] == "" && state.Data["subject"] != "" {
+			//Пользователь выбирает тему теста
+			logger.Info(fmt.Sprintf("User ID - %v selected topic test: %s ", userID, text))
+			state.Data["Topic"] = text
+			state.Data["level"] = "Базовый"
+			state.MessageID = 0
+			BotContext.SetUserState(userID, state)
+			menu.ShowSetingMenu(bot, update, logger, BotContext)
+			return
+		}
+		logger.Debug("Simple input")
 	}
 }
 func validationMessage(text string, userID int64, logger *zap.Logger) bool {

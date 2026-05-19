@@ -1,23 +1,14 @@
 package menu
 
 import (
+	"TeacherBot/models"
 	"fmt"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 )
 
-func getChatID(update tgbotapi.Update) int64 {
-	var chatID int64
-	if update.Message == nil {
-		chatID = update.CallbackQuery.From.ID
-		return chatID
-	}
-	chatID = update.Message.Chat.ID
-	return chatID
-}
-
-func ShowStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger) {
+func ShowStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext, Caption string) {
 	// Создаем инлайн клавиатуру
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
@@ -27,13 +18,16 @@ func ShowStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Log
 			tgbotapi.NewInlineKeyboardButtonData("📝 Интерактивный тест", "interactive"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("⚙️ Настройки", "settings"),
+			tgbotapi.NewInlineKeyboardButtonData("⚙️ Настройки", "settings"), //tgbotapi.NewInlineKeyboardButtonURL
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonURL("🌐 Repositorie", "https://github.com/DenisAstrakhan/-Teacher-telegram-bot"),
 		),
 	)
-	sendMenu(bot, update, "👋 Добро пожаловать в бот!", keyboard, logger)
+	sendMenu(bot, update, Caption, keyboard, logger, BotContext, "Image/start.jpg")
 }
 
-func ShowLevelMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger) {
+func ShowLevelMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
 	//level: Beginner (A1-A2) - Новичок, Intermediate (B1-B2) - Средний, Advanced (C1-C2) - Продвинутый,
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
@@ -50,9 +44,9 @@ func ShowLevelMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Log
 		),
 	)
 
-	sendMenu(bot, update, "Выберите сложность", keyboard, logger)
+	sendMenu(bot, update, "Выберите сложность", keyboard, logger, BotContext, "Image/start.jpg")
 }
-func ShowBeginnerMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger) {
+func ShowBeginnerMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
 	/*
 	   Topic1: Present Simple & Present Continuous (базовое сравнение)
 	   Topic2: There is / There are + предлоги места
@@ -82,9 +76,9 @@ func ShowBeginnerMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.
 		),
 	)
 
-	sendMenu(bot, update, "Выберите тему", keyboard, logger)
+	sendMenu(bot, update, "Выберите тему", keyboard, logger, BotContext, "Image/start.jpg")
 }
-func ShowIntermediateMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger) {
+func ShowIntermediateMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
 	/*
 		Topic1: Present Perfect vs. Past Simple
 		Topic2: Условные предложения (Conditionals: 0, 1, 2 типы)
@@ -113,10 +107,10 @@ func ShowIntermediateMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *
 		),
 	)
 
-	sendMenu(bot, update, "Выберите тему", keyboard, logger)
+	sendMenu(bot, update, "Выберите тему", keyboard, logger, BotContext, "Image/start.jpg")
 }
 
-func ShowAdvancMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger) {
+func ShowAdvancMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
 	/*
 		Topic1: Инверсия (Never have I seen... / Not only did he...)
 		Topic2: Смешанные условные предложения (Mixed Conditionals)
@@ -146,18 +140,130 @@ func ShowAdvancMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Lo
 		),
 	)
 
-	sendMenu(bot, update, "Выберите тему", keyboard, logger)
+	sendMenu(bot, update, "Выберите тему", keyboard, logger, BotContext, "Image/start.jpg")
 }
-func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyboard tgbotapi.InlineKeyboardMarkup, logger *zap.Logger) {
-	chatID := getChatID(update)
-	photoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath("Image/start.jpg"))
-	photoMsg.Caption = Caption
-	photoMsg.ReplyMarkup = keyboard
-	if _, err := bot.Send(photoMsg); err != nil {
-		// Если фото не отправилось (файл не найден), отправляем только текст
-		logger.Error(fmt.Sprintf("Ошибка отправки фото: %v", err))
-		textMsg := tgbotapi.NewMessage(chatID, Caption)
-		textMsg.ReplyMarkup = keyboard
-		bot.Send(textMsg)
+func ShowTestMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, logger *zap.Logger, BotContext *models.BotContext) {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("A", "A"),
+			tgbotapi.NewInlineKeyboardButtonData("B", "B"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("C", "C"),
+			tgbotapi.NewInlineKeyboardButtonData("D", "D"),
+		),
+	)
+	sendMenu(bot, update, Caption, keyboard, logger, BotContext, "Image/start.jpg")
+}
+func ShowSetingMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📝 Простой тест", "simple"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📝 Интерактивный тест", "interactive"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔙 Назад", "back"),
+		),
+	)
+	sendMenu(bot, update, "Выберите тип теста", keyboard, logger, BotContext, "Image/start.jpg")
+}
+func ShowWarningMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Простите пожалуйста я так больше не буду", "sorry"),
+		),
+	)
+	sendMenu(bot, update, "Ненормативная лексика! За тобой уже выехали.", keyboard, logger, BotContext, "Image/warning.jpg")
+}
+func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyboard tgbotapi.InlineKeyboardMarkup, logger *zap.Logger, BotContext *models.BotContext, imageName string) {
+	var chatID int64
+	if update.Message == nil {
+		chatID = update.CallbackQuery.From.ID
+		userStates := BotContext.GetUserStattes()
+		state := userStates[chatID]
+		logger.Debug(fmt.Sprintf("MessageID: %v", state.MessageID))
+		if _, exist := state.Data["nopoto"]; exist {
+			editMessage := tgbotapi.NewEditMessageText(chatID, state.MessageID, Caption)
+			editMessage.ReplyMarkup = &keyboard
+			_, err := bot.Send(editMessage)
+			if err != nil {
+				logger.Debug(fmt.Sprintf("Error edit photo message: %v", err))
+			}
+			return
+		}
+		editMessage := tgbotapi.NewEditMessageCaption(chatID, state.MessageID, Caption)
+		editMessage.ReplyMarkup = &keyboard
+		_, err := bot.Send(editMessage)
+		if err != nil {
+			logger.Debug(fmt.Sprintf("Error edit photo message: %v", err))
+		}
+		return
 	}
+	chatID = update.Message.Chat.ID
+	userStates := BotContext.GetUserStattes()
+	state := userStates[chatID]
+	if state.MessageID == 0 {
+		//Первое сообщение пользователю
+		photoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imageName)) //"Image/start.jpg"
+		photoMsg.Caption = Caption
+		photoMsg.ReplyMarkup = keyboard
+		sendMessage, err := bot.Send(photoMsg)
+		if err != nil {
+			// Если фото не отправилось (файл не найден), отправляем только текст
+			logger.Error(fmt.Sprintf("Error send photo: %v", err))
+			textMsg := tgbotapi.NewMessage(chatID, Caption)
+			textMsg.ReplyMarkup = keyboard
+			sendMessage, _ = bot.Send(textMsg)
+			state.MessageID = sendMessage.MessageID
+			state.Data["nopoto"] = ""
+			BotContext.SetUserState(chatID, state)
+			return
+		}
+
+		state.MessageID = sendMessage.MessageID
+		BotContext.SetUserState(chatID, state)
+		logger.Info(fmt.Sprintf("Message ID: %v", sendMessage.MessageID))
+		return
+	}
+	//Повторное сообщение пользователю
+	if update.Message.Photo != nil {
+		//Пользователь отправил сообщение с фото
+		editMessage := tgbotapi.NewEditMessageCaption(chatID, state.MessageID, Caption)
+		editMessage.ReplyMarkup = &keyboard
+		_, err := bot.Send(editMessage)
+		if err != nil {
+			logger.Debug(fmt.Sprintf("Error edit photo message: %v", err))
+		}
+		return
+	}
+	//Пользователь отправил сообщения без фото
+	editMessage := tgbotapi.NewEditMessageText(chatID, state.MessageID, Caption)
+	editMessage.ReplyMarkup = &keyboard
+	_, err := bot.Send(editMessage)
+	if err != nil {
+		logger.Debug(fmt.Sprintf("Error edit text message: %v", err))
+	}
+}
+func ReturnStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext, logger *zap.Logger, Caption string) {
+	var userID int64
+	if update.Message == nil {
+		userID = update.CallbackQuery.From.ID
+	} else {
+		userID = update.Message.Chat.ID
+	}
+	userStates := BotContext.GetUserStattes()
+	state := userStates[userID]
+	state.AllQuestions = nil
+	state.UserAnswers = nil
+	state.CorrectAnswers = nil
+	state.Conversation = nil
+	state.CurrentMenu = "main"
+	state.Data["subject"] = ""
+	state.Data["Topic"] = ""
+	state.Data["level"] = ""
+	delete(state.Data, "score")
+	BotContext.SetUserState(userID, state)
+	ShowStartMenu(bot, update, logger, BotContext, Caption)
 }

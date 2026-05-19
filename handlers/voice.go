@@ -11,36 +11,32 @@ import (
 	"go.uber.org/zap"
 )
 
-func SavePhoto(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger) {
-	// Получаем фото максимального размера
-	logger.Info(fmt.Sprintf("User ID - %v: sent the photo ", update.Message.From.ID))
-	photo := update.Message.Photo[len(update.Message.Photo)-1]
-
+func SaveVoice(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger) {
+	logger.Info(fmt.Sprintf("User ID - %v: sent the voice ", update.Message.From.ID))
+	voice := update.Message.Voice
 	// Получаем информацию о файле
-	file, err := bot.GetFile(tgbotapi.FileConfig{FileID: photo.FileID})
+	file, err := bot.GetFile(tgbotapi.FileConfig{FileID: voice.FileID})
 	if err != nil {
 		logger.Warn(fmt.Sprintf("User ID - %v: Error getting file: %v", update.Message.From.ID, err))
 		return
 	}
-
 	// Создаем папку "out", если её не существует
 	if err := os.MkdirAll("out", 0755); err != nil {
 		logger.Warn(fmt.Sprintf("User ID - %v: Error creating directory: %v", update.Message.From.ID, err))
 		return
 	}
-
 	// Формируем путь для сохранения
 	now := time.Now()
-	fileName := fmt.Sprintf("out/photo_ID_%v_%s.jpg", update.Message.From.ID, now.Format("2006-01-02_15-04-05"))
+	fileName := fmt.Sprintf("out/voice_ID_%v_%s.ogg", update.Message.From.ID, now.Format("2006-01-02_15-04-05"))
 
-	// Формируем URL для скачивания файла
-	// Используем токен бота и file.FilePath из ответа GetFile
-	downloadURL := fmt.Sprintf("https://api.telegram.org/file/bot%s/%s",
-		os.Getenv("BOT_TOKEN"),
-		file.FilePath)
+	//Получаем URL для скачивания
+	fileURL := file.Link(bot.Token)
 
-	// Скачиваем файл через HTTP запрос
-	resp, err := http.Get(downloadURL)
+	//Скачиваем файл
+	httpClient := &http.Client{
+		Timeout: 30 * time.Second, // Устанавливаем таймаут
+	}
+	resp, err := httpClient.Get(fileURL)
 	if err != nil {
 		logger.Warn(fmt.Sprintf("User ID - %v: Error downloading file: %v", update.Message.From.ID, err))
 		return
@@ -54,7 +50,6 @@ func SavePhoto(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger)
 		return
 	}
 	defer outFile.Close()
-
 	// Копируем содержимое
 	_, err = io.Copy(outFile, resp.Body)
 	if err != nil {
@@ -63,8 +58,8 @@ func SavePhoto(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger)
 	}
 
 	// Подтверждаем пользователю
-	logger.Info(fmt.Sprintf("User ID - %v: Save photo: %s", update.Message.From.ID, fileName))
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "✅ Изображение сохранено!")
+	logger.Info(fmt.Sprintf("User ID - %v: Save voice: %s", update.Message.From.ID, fileName))
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "✅ Звуковое сообщение сохранено!")
 	bot.Send(msg)
 
 }

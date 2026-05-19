@@ -1,6 +1,7 @@
 package main
 
 import (
+	gchat "TeacherBot/gigachat"
 	"TeacherBot/handlers"
 	"TeacherBot/logger"
 	"TeacherBot/models"
@@ -14,7 +15,7 @@ import (
 
 func main() {
 	//Создаём логер
-	logger, logFileClose, err := logger.NewLogger("DEBUG")
+	logger, logFileClose, err := logger.NewLogger(os.Getenv("LOG_LEVE"))
 	if err != nil {
 		panic(err)
 	}
@@ -25,7 +26,9 @@ func main() {
 		logger.Error("Error loading .env file")
 		panic(err)
 	}
-	BotContext := models.NewBotContext()
+	// Создаём Giga chat клиента
+	GigaChat := gchat.StartBot()
+	BotContext := models.NewBotContext(GigaChat)
 	// Инициализируем бот
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("BOT_TOKEN"))
 	if err != nil {
@@ -46,15 +49,21 @@ func main() {
 			handlers.HandleCallback(logger, bot, update, BotContext)
 			continue
 		}
-		// Проверяем обычные сообщения
-		if update.Message != nil {
-			handlers.HandleMesage(logger, bot, update, BotContext)
-			continue
-		}
 		// Проверяем получения изображения
 		if len(update.Message.Photo) > 0 {
-			handlers.SavePhoto(logger)
+			handlers.SavePhoto(bot, update, logger)
 			continue
 		}
+		//Проверяем звуковые сообщения
+		if update.Message.Voice != nil {
+			handlers.SaveVoice(bot, update, logger)
+			continue
+		}
+		// Проверяем обычные сообщения
+		if update.Message != nil {
+			handlers.HandleMessage(logger, bot, update, BotContext)
+			continue
+		}
+
 	}
 }
