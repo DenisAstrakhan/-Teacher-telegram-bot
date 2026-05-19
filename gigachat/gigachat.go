@@ -48,7 +48,7 @@ func StartTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.
 		return
 	default:
 		logger.Warn(fmt.Sprintf("User ID - %v: Failed to start tes", userID))
-		returnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 	}
 
 }
@@ -69,7 +69,7 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *m
 		promptfile, err := getPrompt("RunInteractiveTes.txt")
 		if err != nil {
 			logger.Error(fmt.Sprintf("User ID - %v: Failed to read prompt file Error: %v", userID, err))
-			returnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+			menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 			return
 		}
 		conversation := gigachat.Conversation(
@@ -80,7 +80,7 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *m
 		response, err := client.Chat(conversation)
 		if err != nil {
 			logger.Error(fmt.Sprintf("User ID - %v: Failed to get question: Error: %v", userID, err))
-			returnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+			menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 		}
 		question := gigachat.ExtractContent(response)
 		logger.Info(fmt.Sprintf("User ID - %v: Teacher: %s", userID, question))
@@ -98,7 +98,7 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *m
 	response, err := client.Chat(state.Conversation)
 	if err != nil {
 		logger.Error(fmt.Sprintf("User ID - %v: Failed to get question: Error: %v", userID, err))
-		returnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 	}
 	question := gigachat.ExtractContent(response)
 	logger.Info(fmt.Sprintf("User ID - %v: Teacher: %s", userID, question))
@@ -110,7 +110,7 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *m
 		delete(state.Data, "score")
 		state.MessageID = 0
 		BotContext.SetUserState(userID, state)
-		returnStartMenu(bot, update, BotContext, logger, response)
+		menu.ReturnStartMenu(bot, update, BotContext, logger, response)
 		return
 	}
 	state.Conversation = append(state.Conversation,
@@ -133,18 +133,18 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models
 			checkscore, err := checkingAnswer(state.UserAnswers, state.CorrectAnswers)
 			if err != nil {
 				logger.Error(fmt.Sprintf("User ID - %v: Failed test: Error: %v", userID, err))
-				returnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+				menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 				return
 			}
 			response := getLetterGrade(checkscore)
 			logger.Info(fmt.Sprintf("Test finish! User ID - %v result: %s", userID, response))
-			returnStartMenu(bot, update, BotContext, logger, response)
+			menu.ReturnStartMenu(bot, update, BotContext, logger, response)
 			return
 		}
 		question, correctAnswer, err := parseQuestion(state.AllQuestions[len])
 		if err != nil {
 			logger.Error(fmt.Sprintf("User ID - %v: Failed test: Error: %v", userID, err))
-			returnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+			menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 		}
 		state.CorrectAnswers = append(state.CorrectAnswers, correctAnswer)
 		BotContext.SetUserState(userID, state)
@@ -157,7 +157,7 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models
 	promptfile, err := getPrompt("RunOneRequestTest.txt")
 	if err != nil {
 		logger.Error(fmt.Sprintf("User ID - %v: Failed to read prompt file Error: %v", userID, err))
-		returnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 		return
 	}
 	prompt := fmt.Sprintf(promptfile, state.Data["subject"], state.Data["Topic"], state.Data["level"])
@@ -167,20 +167,20 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models
 	response, err := client.Chat(messages)
 	if err != nil {
 		logger.Error(fmt.Sprintf("User ID - %v: Failed to get question: Error: %v", userID, err))
-		returnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 		return
 	}
 	allquestions := splitByQuestionNumber(response.Choices[0].Message.Content)
 	if len(allquestions) != 10 {
 		logger.Error(fmt.Sprintf("User ID - %v: Failed to get 10 test questions", userID))
-		returnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 		return
 	}
 	state.AllQuestions = allquestions
 	question, correctAnswer, err := parseQuestion(state.AllQuestions[0])
 	if err != nil {
 		logger.Error(fmt.Sprintf("User ID - %v: Failed test: Error: %v", userID, err))
-		returnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 		return
 	}
 	state.CorrectAnswers = append(state.CorrectAnswers, correctAnswer)
@@ -211,20 +211,6 @@ func parseScoreDigit(input string) (int, bool) {
 	return 0, false
 }
 
-func returnStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext, logger *zap.Logger, Caption string) {
-	userID := getUserID(update)
-	userStates := BotContext.GetUserStattes()
-	state := userStates[userID]
-	state.AllQuestions = nil
-	state.UserAnswers = nil
-	state.CorrectAnswers = nil
-	state.CurrentMenu = "main"
-	state.Data["subject"] = ""
-	state.Data["Topic"] = ""
-	state.Data["level"] = ""
-	BotContext.SetUserState(userID, state)
-	menu.ShowStartMenu(bot, update, logger, BotContext, Caption)
-}
 func getUserID(update tgbotapi.Update) int64 {
 	var chatID int64
 	if update.Message == nil {

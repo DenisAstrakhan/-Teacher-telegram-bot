@@ -18,10 +18,13 @@ func ShowStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Log
 			tgbotapi.NewInlineKeyboardButtonData("📝 Интерактивный тест", "interactive"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("⚙️ Настройки", "settings"),
+			tgbotapi.NewInlineKeyboardButtonData("⚙️ Настройки", "settings"), //tgbotapi.NewInlineKeyboardButtonURL
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonURL("🌐 Repositorie", "https://github.com/DenisAstrakhan/-Teacher-telegram-bot"),
 		),
 	)
-	sendMenu(bot, update, Caption, keyboard, logger, BotContext)
+	sendMenu(bot, update, Caption, keyboard, logger, BotContext, "Image/start.jpg")
 }
 
 func ShowLevelMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
@@ -41,7 +44,7 @@ func ShowLevelMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Log
 		),
 	)
 
-	sendMenu(bot, update, "Выберите сложность", keyboard, logger, BotContext)
+	sendMenu(bot, update, "Выберите сложность", keyboard, logger, BotContext, "Image/start.jpg")
 }
 func ShowBeginnerMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
 	/*
@@ -73,7 +76,7 @@ func ShowBeginnerMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.
 		),
 	)
 
-	sendMenu(bot, update, "Выберите тему", keyboard, logger, BotContext)
+	sendMenu(bot, update, "Выберите тему", keyboard, logger, BotContext, "Image/start.jpg")
 }
 func ShowIntermediateMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
 	/*
@@ -104,7 +107,7 @@ func ShowIntermediateMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *
 		),
 	)
 
-	sendMenu(bot, update, "Выберите тему", keyboard, logger, BotContext)
+	sendMenu(bot, update, "Выберите тему", keyboard, logger, BotContext, "Image/start.jpg")
 }
 
 func ShowAdvancMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
@@ -137,7 +140,7 @@ func ShowAdvancMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Lo
 		),
 	)
 
-	sendMenu(bot, update, "Выберите тему", keyboard, logger, BotContext)
+	sendMenu(bot, update, "Выберите тему", keyboard, logger, BotContext, "Image/start.jpg")
 }
 func ShowTestMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, logger *zap.Logger, BotContext *models.BotContext) {
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
@@ -150,7 +153,7 @@ func ShowTestMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, 
 			tgbotapi.NewInlineKeyboardButtonData("D", "D"),
 		),
 	)
-	sendMenu(bot, update, Caption, keyboard, logger, BotContext)
+	sendMenu(bot, update, Caption, keyboard, logger, BotContext, "Image/start.jpg")
 }
 func ShowSetingMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
@@ -160,10 +163,21 @@ func ShowSetingMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Lo
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("📝 Интерактивный тест", "interactive"),
 		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔙 Назад", "back"),
+		),
 	)
-	sendMenu(bot, update, "Выберите тип теста", keyboard, logger, BotContext)
+	sendMenu(bot, update, "Выберите тип теста", keyboard, logger, BotContext, "Image/start.jpg")
 }
-func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyboard tgbotapi.InlineKeyboardMarkup, logger *zap.Logger, BotContext *models.BotContext) {
+func ShowWarningMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Простите пожалуйста я так больше не буду", "sorry"),
+		),
+	)
+	sendMenu(bot, update, "Ненормативная лексика! За тобой уже выехали.", keyboard, logger, BotContext, "Image/warning.jpg")
+}
+func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyboard tgbotapi.InlineKeyboardMarkup, logger *zap.Logger, BotContext *models.BotContext, imageName string) {
 	var chatID int64
 	if update.Message == nil {
 		chatID = update.CallbackQuery.From.ID
@@ -192,7 +206,7 @@ func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyb
 	state := userStates[chatID]
 	if state.MessageID == 0 {
 		//Первое сообщение пользователю
-		photoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath("Image/start.jpg"))
+		photoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imageName)) //"Image/start.jpg"
 		photoMsg.Caption = Caption
 		photoMsg.ReplyMarkup = keyboard
 		sendMessage, err := bot.Send(photoMsg)
@@ -231,4 +245,25 @@ func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyb
 	if err != nil {
 		logger.Debug(fmt.Sprintf("Error edit text message: %v", err))
 	}
+}
+func ReturnStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext, logger *zap.Logger, Caption string) {
+	var userID int64
+	if update.Message == nil {
+		userID = update.CallbackQuery.From.ID
+	} else {
+		userID = update.Message.Chat.ID
+	}
+	userStates := BotContext.GetUserStattes()
+	state := userStates[userID]
+	state.AllQuestions = nil
+	state.UserAnswers = nil
+	state.CorrectAnswers = nil
+	state.Conversation = nil
+	state.CurrentMenu = "main"
+	state.Data["subject"] = ""
+	state.Data["Topic"] = ""
+	state.Data["level"] = ""
+	delete(state.Data, "score")
+	BotContext.SetUserState(userID, state)
+	ShowStartMenu(bot, update, logger, BotContext, Caption)
 }

@@ -34,17 +34,23 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		return
 	default:
 		if !validationMessage(text, userID, logger) {
-			logger.Debug("Некоректный ввод")
+			logger.Debug("Uncorrect input")
+			logger.Debug(fmt.Sprintf("Message ID to delete: %v", state.MessageID))
+			msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
+			bot.Send(msgToDelete)
+			state.MessageID = 0
+			BotContext.SetUserState(userID, state)
+			menu.ShowWarningMenu(bot, update, logger, BotContext)
 			return
 		}
-		logger.Debug("Коректный ввод")
+		logger.Debug("Correct input")
 		if _, exists := state.Data["score"]; exists {
 			// Пользователь проходит интерактивный тест
 			logger.Info(fmt.Sprintf("User ID - %v interactive test message: %s ", userID, text))
 			gchat.InteractiveTest(bot, update, BotContext, logger)
 			return
 		}
-		if state.Data["subject"] == "" {
+		if state.CurrentMenu == "setting" && state.Data["subject"] == "" {
 			//Пользователь выбирает предмет теста
 			logger.Info(fmt.Sprintf("User ID - %v selected subject test: %s ", userID, text))
 			state.Data["subject"] = text
@@ -53,7 +59,7 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 			bot.Send(msg)
 			return
 		}
-		if state.Data["Topic"] == "" && state.Data["subject"] != "" {
+		if state.CurrentMenu == "setting" && state.Data["Topic"] == "" && state.Data["subject"] != "" {
 			//Пользователь выбирает тему теста
 			logger.Info(fmt.Sprintf("User ID - %v selected topic test: %s ", userID, text))
 			state.Data["Topic"] = text
@@ -61,7 +67,9 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 			state.MessageID = 0
 			BotContext.SetUserState(userID, state)
 			menu.ShowSetingMenu(bot, update, logger, BotContext)
+			return
 		}
+		logger.Debug("Simple input")
 	}
 }
 func validationMessage(text string, userID int64, logger *zap.Logger) bool {

@@ -55,9 +55,12 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 		menu.ShowLevelMenu(bot, update, logger, BotContext)
 	case "settings":
 		gchat.SelectSubject(bot, update, BotContext)
-		return
+		state.CurrentMenu = "setting"
 	case "back":
 		goBack(bot, update, BotContext, logger)
+		return
+	case "sorry":
+		menu.ReturnStartMenu(bot, update, BotContext, logger, "Попробуй всё заново")
 		return
 	case "Beginner":
 		state.CurrentMenu = "Beginner"
@@ -228,6 +231,9 @@ func goBack(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.Bot
 	case "Beginner", "Intermediate", "Advanc":
 		state.CurrentMenu = state.Data["test"]
 		menu.ShowLevelMenu(bot, update, logger, BotContext)
+	case "setting":
+		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		return
 	default:
 		menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
 		state.CurrentMenu = "main"

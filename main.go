@@ -15,7 +15,7 @@ import (
 
 func main() {
 	//Создаём логер
-	logger, logFileClose, err := logger.NewLogger("DEBUG")
+	logger, logFileClose, err := logger.NewLogger(os.Getenv("LOG_LEVE"))
 	if err != nil {
 		panic(err)
 	}
