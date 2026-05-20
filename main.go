@@ -28,7 +28,7 @@ func main() {
 	}
 	// Создаём Giga chat клиента
 	GigaChat := gchat.StartBot()
-	BotContext := models.NewBotContext(GigaChat)
+	BotContext := models.NewBotContext(GigaChat, logger)
 	// Инициализируем бот
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("BOT_TOKEN"))
 	if err != nil {

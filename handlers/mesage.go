@@ -33,6 +33,11 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
 		return
 	default:
+		//Проверка на пустой ввод
+		if len(strings.Fields(text)) == 0 {
+			logger.Info(fmt.Sprintf("User %v entered nothing", userID))
+			return
+		}
 		if !validationMessage(text, userID, logger) {
 			logger.Debug("Uncorrect input")
 			logger.Debug(fmt.Sprintf("Message ID to delete: %v", state.MessageID))
@@ -53,6 +58,11 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		if state.CurrentMenu == "setting" && state.Data["subject"] == "" {
 			//Пользователь выбирает предмет теста
 			logger.Info(fmt.Sprintf("User ID - %v selected subject test: %s ", userID, text))
+			if !validationSubject(text, userID, BotContext, logger) {
+				msg := tgbotapi.NewMessage(userID, "Попробуйте ещё раз! Указанного предмета нет в согласованном списке")
+				bot.Send(msg)
+				return
+			}
 			state.Data["subject"] = text
 			BotContext.SetUserState(userID, state)
 			msg := tgbotapi.NewMessage(userID, "Напишите тему теста")
@@ -79,24 +89,30 @@ func validationMessage(text string, userID int64, logger *zap.Logger) bool {
 		sensitive.FilterOption{Type: sensitive.FilterDfa},
 	)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Ошибка создания фильтра: %v\n", err))
-		return false
-	}
-	//Проверка на пустой ввод
-	if len(strings.Fields(text)) == 0 {
-		logger.Info(fmt.Sprintf("Пользователь %v ничего не ввёл", userID))
+		logger.Error(fmt.Sprintf("Error creating filter: %v\n", err))
 		return false
 	}
 	// Загрузка словаря Русских ругательств из файла
-	err = filter.LoadDictPath("handlers/russian-bad-words.txt")
+	err = filter.LoadDictPath("dictionaries/russian-bad-words.txt")
 	if err != nil {
-		logger.Error(fmt.Sprintf("Ошибка загрузки словаря: %v\n", err))
+		logger.Error(fmt.Sprintf("Error loading dictionary: %v\n", err))
 		return false
 	}
 	//Проверка запрещённых слов
 	if filter.IsSensitive(text) {
-		logger.Info(fmt.Sprintf("Пользователь %v ввёл запрещённые слова", userID))
+		logger.Info(fmt.Sprintf("User %v entered forbidden words", userID))
 		return false
 	}
 	return true
+}
+func validationSubject(text string, userID int64, BotContext *models.BotContext, logger *zap.Logger) bool {
+	BotContext.Mtx.RLock()
+	Subjects := BotContext.Subjects
+	BotContext.Mtx.RUnlock()
+	if _, exist := Subjects[strings.ToLower(text)]; exist {
+		logger.Info(fmt.Sprintf("User %v entered a subject from the list", userID))
+		return true
+	}
+	logger.Info(fmt.Sprintf("User %v entered a subject not in the list", userID))
+	return false
 }
