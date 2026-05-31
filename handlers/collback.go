@@ -14,16 +14,19 @@ import (
 func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext) {
 	// Отвечаем на callback (убираем "часики")
 	bot.Send(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
-	userStates := BotContext.GetUserStattes()
 	userID := update.CallbackQuery.From.ID
 	data := update.CallbackQuery.Data
 	logger.Info(fmt.Sprintf("User ID - %v: press \"%s\" ", userID, data))
 	// Инициализируем состояние пользователя
-	if _, exists := userStates[userID]; !exists {
-		userStates[userID] = models.NewUserState()
-		logger.Info(fmt.Sprintf("New User: ID - %v, Name: %s", userID, update.CallbackQuery.From.FirstName))
+	exists, state := initializationUserStates(logger, userID, BotContext)
+	if !exists {
+		logger.Info(fmt.Sprintf("User %v, Name: %s, not found in system", userID, update.CallbackQuery.From.FirstName))
+		msg := tgbotapi.NewMessage(userID, "После перезапуска ваши данные в системе были утеряны. Начните с команды \"/start\"")
+		if _, err := bot.Send(msg); err != nil {
+			logger.Error(fmt.Sprintf("Error sending message: %v", err))
+		}
+		return
 	}
-	state := userStates[userID]
 	//Защита от повторного нажатий
 	BotContext.Mtx.Lock()
 	if time.Since(state.UserLastPress[userID]) < 1000*time.Millisecond {
@@ -54,7 +57,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 		}
 		menu.ShowLevelMenu(bot, update, logger, BotContext)
 	case "settings":
-		gchat.SelectSubject(bot, update, BotContext)
+		gchat.SelectSubject(bot, update, BotContext, logger)
 		state.CurrentMenu = "setting"
 	case "back":
 		goBack(bot, update, BotContext, logger)
