@@ -14,18 +14,17 @@ import (
 )
 
 func main() {
+	//Подтягиваем переменные окружения
+	if err := godotenv.Load(); err != nil {
+		panic(err)
+	}
 	//Создаём логер
-	logger, logFileClose, err := logger.NewLogger(os.Getenv("LOG_LEVE"))
+	logger, logFileClose, err := logger.NewLogger(os.Getenv("LOG_LEVEL"))
 	if err != nil {
 		panic(err)
 	}
 	defer logFileClose()
-	//Подтягиваем переменные окружения
-	err = godotenv.Load()
-	if err != nil {
-		logger.Error("Error loading .env file")
-		panic(err)
-	}
+
 	// Создаём Giga chat клиента
 	GigaChat := gchat.StartBot()
 	BotContext := models.NewBotContext(GigaChat, logger)

@@ -206,7 +206,7 @@ func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyb
 	state := userStates[chatID]
 	if state.MessageID == 0 {
 		//Первое сообщение пользователю
-		photoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imageName)) //"Image/start.jpg"
+		photoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imageName))
 		photoMsg.Caption = Caption
 		photoMsg.ReplyMarkup = keyboard
 		sendMessage, err := bot.Send(photoMsg)
@@ -229,6 +229,7 @@ func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyb
 	}
 	//Повторное сообщение пользователю
 	if update.Message.Photo != nil {
+		logger.Debug("update.Message.Photo != nil")
 		//Пользователь отправил сообщение с фото
 		editMessage := tgbotapi.NewEditMessageCaption(chatID, state.MessageID, Caption)
 		editMessage.ReplyMarkup = &keyboard
@@ -245,6 +246,7 @@ func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyb
 	if err != nil {
 		logger.Debug(fmt.Sprintf("Error edit text message: %v", err))
 	}
+	logger.Debug("sendMenu finish")
 }
 func ReturnStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext, logger *zap.Logger, Caption string) {
 	var userID int64

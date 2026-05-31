@@ -65,6 +65,8 @@ func SavePhoto(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger)
 	// Подтверждаем пользователю
 	logger.Info(fmt.Sprintf("User ID - %v: Save photo: %s", update.Message.From.ID, fileName))
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "✅ Изображение сохранено!")
-	bot.Send(msg)
+	if _, err := bot.Send(msg); err != nil {
+		logger.Error(fmt.Sprintf("Error sending message: %v", err))
+	}
 
 }

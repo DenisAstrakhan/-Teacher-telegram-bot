@@ -62,7 +62,9 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *m
 	if _, exists := state.Data["score"]; !exists {
 		//Пользователь только начал тест
 		msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
-		bot.Send(msgToDelete)
+		if _, err := bot.Send(msgToDelete); err != nil {
+			logger.Error(fmt.Sprintf("Error sending message: %v", err))
+		}
 		logger.Info(fmt.Sprintf("User ID - %v: Is at the beginning of the test", userID))
 		state.Data["score"] = "0"
 		// Создаём "учителя" с памятью о ходе теста
@@ -87,7 +89,9 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *m
 		conversation = append(conversation, gigachat.Message{Role: "assistant", Content: question})
 		// Отправляем вопрос пользоватпелю
 		msg := tgbotapi.NewMessage(userID, question)
-		bot.Send(msg)
+		if _, err := bot.Send(msg); err != nil {
+			logger.Error(fmt.Sprintf("Error sending message: %v", err))
+		}
 		state.Conversation = conversation
 		BotContext.SetUserState(userID, state)
 		return
@@ -116,7 +120,9 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *m
 	state.Conversation = append(state.Conversation,
 		gigachat.Message{Role: "assistant", Content: question})
 	msg := tgbotapi.NewMessage(userID, question)
-	bot.Send(msg)
+	if _, err := bot.Send(msg); err != nil {
+		logger.Error(fmt.Sprintf("Error sending message: %v", err))
+	}
 	BotContext.SetUserState(userID, state)
 }
 func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext, logger *zap.Logger) {
@@ -188,13 +194,15 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models
 	BotContext.SetUserState(userID, state)
 	menu.ShowTestMenu(bot, update, question, logger, BotContext)
 }
-func SelectSubject(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext) {
+func SelectSubject(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext, logger *zap.Logger) {
 	userID := getUserID(update)
 	states := BotContext.GetUserStattes()
 	state := states[userID]
 	state.Data["subject"] = ""
 	msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
-	bot.Send(msgToDelete)
+	if _, err := bot.Send(msgToDelete); err != nil {
+		logger.Error(fmt.Sprintf("Error sending message: %v", err))
+	}
 	BotContext.SetUserState(userID, state)
 	msg := tgbotapi.NewMessage(userID, "Напишите школьный предмет для которого нужно создать тест")
 	bot.Send(msg)
