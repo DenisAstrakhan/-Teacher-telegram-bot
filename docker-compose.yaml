@@ -1,0 +1,43 @@
+services:
+  bot-postgres:
+   image: postgres:18-bookworm 
+   container_name: bot-env-postgres
+   environment:
+    - POSTGRES_USER=${POSTGRES_USER}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - POSTGRES_DB=${POSTGRES_DB}
+   volumes:
+    - ./out/pgdata:/var/lib/postgresql
+   ports:
+   - "5432:5432" #Временно не для деплоя 
+   restart: always
+   healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  telegram-bot:
+    image: telegram-bot
+    pull_policy: never
+    container_name: bot-telegram
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      bot-postgres:
+        condition: service_healthy
+    restart: always
+   
+  bot-postgres-migrate:
+    image: migrate/migrate:v4.19.1
+    volumes:
+    - ./migrations:/migrations
+
+  port-forwarder:
+    image: alpine/socat:1.8.0.3
+    container_name: bot-postgres-port-forwarder
+    command: tcp-listen:5432,fork,reuseaddr tcp-connect:bot-postgres:5432
+    ports:
+    - "127.0.0.1:5432:5432"

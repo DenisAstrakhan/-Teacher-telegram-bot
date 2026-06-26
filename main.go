@@ -1,10 +1,12 @@
 package main
 
 import (
+	"TeacherBot/domain"
 	gchat "TeacherBot/gigachat"
 	"TeacherBot/handlers"
 	"TeacherBot/logger"
-	"TeacherBot/models"
+	postgres "TeacherBot/repository"
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -24,10 +26,18 @@ func main() {
 		panic(err)
 	}
 	defer logFileClose()
+	//Создаём контекст для работы с репозиторием
+	RepositoryContext, RepositoryCancel := context.WithCancel(context.Background())
+	defer RepositoryCancel()
+	//Создаём подключение к базе данных
+	UserRepository, err := postgres.NewUserRepository(RepositoryContext)
+	if err != nil {
+		fmt.Println("Ошибка при подключении к базе данных: %w", err)
+	}
 
 	// Создаём Giga chat клиента
 	GigaChat := gchat.StartBot()
-	BotContext := models.NewBotContext(GigaChat, logger)
+	BotContext := domain.NewBotContext(UserRepository, GigaChat, logger)
 	// Инициализируем бот
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("BOT_TOKEN"))
 	if err != nil {

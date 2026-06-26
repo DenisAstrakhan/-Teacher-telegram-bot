@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"TeacherBot/domain"
 	gchat "TeacherBot/gigachat"
 	"TeacherBot/menu"
 	"TeacherBot/models"
@@ -12,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext) {
+func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext) {
 	userID := update.Message.Chat.ID
 	text := update.Message.Text
 	logger.Info(fmt.Sprintf("User ID - %v: message \"%s\" ", userID, text))
@@ -113,7 +114,7 @@ func validationMessage(text string, userID int64, logger *zap.Logger) bool {
 	}
 	return true
 }
-func validationSubject(text string, userID int64, BotContext *models.BotContext, logger *zap.Logger) bool {
+func validationSubject(text string, userID int64, BotContext *domain.BotContext, logger *zap.Logger) bool {
 	BotContext.Mtx.RLock()
 	Subjects := BotContext.Subjects
 	BotContext.Mtx.RUnlock()
@@ -124,7 +125,8 @@ func validationSubject(text string, userID int64, BotContext *models.BotContext,
 	logger.Info(fmt.Sprintf("User %v entered a subject not in the list", userID))
 	return false
 }
-func initializationUserStates(logger *zap.Logger, userID int64, BotContext *models.BotContext) (bool, models.UserState) {
+func initializationUserStates(logger *zap.Logger, userID int64, BotContext *domain.BotContext) (bool, models.UserState) {
+
 	userStates := BotContext.GetUserStattes()
 	state, exists := userStates[userID]
 	if !exists {

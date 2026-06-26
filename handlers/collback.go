@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"TeacherBot/domain"
 	gchat "TeacherBot/gigachat"
 	"TeacherBot/menu"
-	"TeacherBot/models"
 	"fmt"
 	"time"
 
@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext) {
+func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext) {
 	// Отвечаем на callback (убираем "часики")
 	bot.Send(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
 	userID := update.CallbackQuery.From.ID
@@ -223,7 +223,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 	}
 	BotContext.SetUserState(userID, state)
 }
-func goBack(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext, logger *zap.Logger) {
+func goBack(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger) {
 	userID := update.CallbackQuery.From.ID
 	userStates := BotContext.UserStates
 	state := userStates[userID]

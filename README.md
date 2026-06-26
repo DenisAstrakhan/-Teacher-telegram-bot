@@ -37,28 +37,30 @@ A bot for conducting English language tests using **GigaChat** from Sber. The us
 | [godotenv](https://github.com/joho/godotenv) | v1.5.1 | Load environment variables from `.env` file |
 
 ---
-
 ## 📁 Project Structure
+
+```
 TeacherBot/
 ├── dictionaries/
-│ ├── SubjectList # Allowed subjects (one per line)
-│ └── russian-bad-words # Profanity dictionary
-├── gigachat/ # GigaChat client and test logic
-├── handlers/ # User action handlers
-├── Image/ # Menu images
-├── logger/ # Configurable logger (zap)
-├── logs/ # Log files directory
-├── menu/ # Bot menu with inline keyboard
-├── models/ # Models and constructors
-├── out/ # Saved images and voice messages
+│   ├── SubjectList          # Allowed subjects (one per line)
+│   └── russian-bad-words    # Profanity dictionary
+├── gigachat/                # GigaChat client and test logic
+├── handlers/                # User action handlers
+├── Image/                   # Menu images
+├── logger/                  # Configurable logger (zap)
+├── logs/                    # Log files directory
+├── menu/                    # Bot menu with inline keyboard
+├── models/                  # Models and constructors
+├── out/                     # Saved images and voice messages
 ├── prompts/
-│ ├── RunStepByStepTest # Prompt for classic test
-│ └── RunInteractiveTest # Prompt for interactive mode
-├── .env # Environment variables (not committed)
-├── .env.example # Example environment variables
+│   ├── RunStepByStepTest    # Prompt for classic test
+│   └── RunInteractiveTest   # Prompt for interactive mode
+├── .env                     # Environment variables (not committed)
+├── .env.example             # Example environment variables
 ├── go.mod
 ├── go.sum
-└── main.go # Entry point
+└── main.go                  # Entry point
+```
 
 text
 

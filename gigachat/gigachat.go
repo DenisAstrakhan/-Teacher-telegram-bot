@@ -1,8 +1,8 @@
 package gchat
 
 import (
+	"TeacherBot/domain"
 	"TeacherBot/menu"
-	"TeacherBot/models"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -33,7 +33,7 @@ func StartBot() *gigachat.Client {
 	)
 	return client
 }
-func StartTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext, logger *zap.Logger) {
+func StartTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger) {
 	userID := getUserID(update)
 	userStates := BotContext.GetUserStattes()
 	state := userStates[userID]
@@ -52,7 +52,7 @@ func StartTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.
 	}
 
 }
-func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext, logger *zap.Logger) {
+func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger) {
 
 	client := BotContext.GigaChat
 	userID := getUserID(update)
@@ -125,7 +125,7 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *m
 	}
 	BotContext.SetUserState(userID, state)
 }
-func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext, logger *zap.Logger) {
+func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger) {
 	client := BotContext.GigaChat
 	userID := getUserID(update)
 	userStates := BotContext.GetUserStattes()
@@ -194,7 +194,7 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models
 	BotContext.SetUserState(userID, state)
 	menu.ShowTestMenu(bot, update, question, logger, BotContext)
 }
-func SelectSubject(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext, logger *zap.Logger) {
+func SelectSubject(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger) {
 	userID := getUserID(update)
 	states := BotContext.GetUserStattes()
 	state := states[userID]
