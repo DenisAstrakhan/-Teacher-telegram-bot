@@ -5,6 +5,8 @@ import (
 	gchat "TeacherBot/gigachat"
 	"TeacherBot/menu"
 	"TeacherBot/models"
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -18,7 +20,11 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 	text := update.Message.Text
 	logger.Info(fmt.Sprintf("User ID - %v: message \"%s\" ", userID, text))
 	// Инициализируем состояние пользователя
-	userNew, state := initializationUserStates(logger, userID, BotContext)
+	userNew, state, err := initializationUserStates(logger, userID, BotContext, bot, update)
+	if err != nil {
+		logger.Error(fmt.Sprintf("error looking up user in database: %s", err))
+		return
+	}
 	// Обработка команд
 	switch text {
 	case "/start":
@@ -88,6 +94,20 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 			menu.ShowSetingMenu(bot, update, logger, BotContext)
 			return
 		}
+		if _, exists := state.Data["teacher"]; exists {
+			//Пользователь вносит учителя в базу данных
+			BotContext.UserRepository.InsertTecher(int(userID), &update.Message.From.UserName, text)
+		}
+		if _, exists := state.Data["student"]; exists {
+			//Пользователь вносит ученика в базу данных
+			BotContext.UserRepository.InsertUser(int(userID), &update.Message.From.UserName, state.Data["user name"], 12345)
+		}
+		if _, exists := state.Data["user name"]; exists {
+			//Пользователь вводит своё имя
+			state.Data["student"] = ""
+			state.Data["user name"] = text
+			BotContext.SetUserState(userID, state)
+		}
 		logger.Debug("Simple input")
 	}
 }
@@ -125,18 +145,37 @@ func validationSubject(text string, userID int64, BotContext *domain.BotContext,
 	logger.Info(fmt.Sprintf("User %v entered a subject not in the list", userID))
 	return false
 }
-func initializationUserStates(logger *zap.Logger, userID int64, BotContext *domain.BotContext) (bool, models.UserState) {
-
+func initializationUserStates(logger *zap.Logger, userID int64, BotContext *domain.BotContext, bot *tgbotapi.BotAPI, update tgbotapi.Update) (bool, models.UserState, error) {
 	userStates := BotContext.GetUserStattes()
 	state, exists := userStates[userID]
 	if !exists {
-		logger.Info(fmt.Sprintf("Add New User: ID - %v", userID))
-		state = models.NewUserState()
-		state.Data["subject"] = ""
-		state.Data["Topic"] = ""
-		state.Data["level"] = ""
-		BotContext.SetUserState(userID, state)
-		return false, state
+		if err := BotContext.UserRepository.InitializationRow("bot.teacher", "telegram_id", userID); !errors.Is(err, sql.ErrNoRows) {
+			if err == nil {
+				teacher := true
+				state = createUserSate(&teacher, userID, logger, BotContext)
+				return false, state, nil
+			}
+			return false, models.UserState{}, err
+		}
+		if err := BotContext.UserRepository.InitializationRow("bot.users", "telegram_id", userID); !errors.Is(err, sql.ErrNoRows) {
+			if err == nil {
+				teacher := false
+				state = createUserSate(&teacher, userID, logger, BotContext)
+				return false, state, nil
+			}
+			return false, models.UserState{}, err
+		}
+		createUserSate(nil, userID, logger, BotContext)
+		menu.ShowWhoAreYouMenu(bot, update, logger, BotContext)
 	}
-	return true, state
+	return true, state, nil
+}
+func createUserSate(teacher *bool, userID int64, logger *zap.Logger, BotContext *domain.BotContext) models.UserState {
+	logger.Info(fmt.Sprintf("Add New User: ID - %v", userID))
+	state := models.NewUserState(teacher)
+	state.Data["subject"] = ""
+	state.Data["Topic"] = ""
+	state.Data["level"] = ""
+	BotContext.SetUserState(userID, state)
+	return state
 }

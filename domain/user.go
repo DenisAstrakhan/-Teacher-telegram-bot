@@ -39,4 +39,8 @@ type UserRepository interface {
 	GetStudentsByTeacher(teacher_ID int, limit int) ([]models.User, error)
 	GetResultByUser(user_id int, limit int) ([]models.UserResult, error)
 	GetTestByUser(id int, user_id int) (models.Test, error)
+	InitializationRow(
+		table_name string,
+		colum_name string,
+		value any) error
 }

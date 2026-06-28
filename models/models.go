@@ -8,6 +8,7 @@ import (
 
 // Состояние пользователя
 type UserState struct {
+	Teacher        *bool
 	CurrentMenu    string              // текущее меню
 	Data           map[string]string   // дополнительные данные
 	MessageID      int                 //ID сообщения для изменения
@@ -18,8 +19,9 @@ type UserState struct {
 	UserLastPress  map[int64]time.Time //Хранилище времени последнего нажатия
 }
 
-func NewUserState() UserState {
+func NewUserState(teacher *bool) UserState {
 	return UserState{
+		Teacher:       teacher,
 		CurrentMenu:   "main",
 		Data:          make(map[string]string),
 		UserLastPress: make(map[int64]time.Time),

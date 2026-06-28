@@ -18,13 +18,9 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 	data := update.CallbackQuery.Data
 	logger.Info(fmt.Sprintf("User ID - %v: press \"%s\" ", userID, data))
 	// Инициализируем состояние пользователя
-	exists, state := initializationUserStates(logger, userID, BotContext)
-	if !exists {
-		logger.Info(fmt.Sprintf("User %v, Name: %s, not found in system", userID, update.CallbackQuery.From.FirstName))
-		msg := tgbotapi.NewMessage(userID, "После перезапуска ваши данные в системе были утеряны. Начните с команды \"/start\"")
-		if _, err := bot.Send(msg); err != nil {
-			logger.Error(fmt.Sprintf("Error sending message: %v", err))
-		}
+	_, state, err := initializationUserStates(logger, userID, BotContext, bot, update)
+	if err != nil {
+		logger.Error(fmt.Sprintf("error looking up user in database: %s", err))
 		return
 	}
 	//Защита от повторного нажатий
@@ -38,6 +34,15 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 	BotContext.Mtx.Unlock()
 	// Обработка callback данных
 	switch data {
+	case "teacher":
+		state.Data["teacher"] = ""
+	case "student":
+		state.Data["user name"] = ""
+		msg := tgbotapi.NewMessage(userID, "Введите своё имя")
+		if _, err := bot.Send(msg); err != nil {
+			logger.Error(fmt.Sprintf("Error sending message: %v", err))
+			return
+		}
 	case "simple":
 		state.CurrentMenu = "simple"
 		state.Data["test"] = "simple"

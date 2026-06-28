@@ -177,6 +177,17 @@ func ShowWarningMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.L
 	)
 	sendMenu(bot, update, "Ненормативная лексика! За тобой уже выехали.", keyboard, logger, BotContext, "Image/warning.jpg")
 }
+func ShowWhoAreYouMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext) {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Учитель", "teacher"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Ученик", "student"),
+		),
+	)
+	sendMenu(bot, update, "Кто ты, воин?", keyboard, logger, BotContext, "Image/WhoAreYou.jpeg")
+}
 func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyboard tgbotapi.InlineKeyboardMarkup, logger *zap.Logger, BotContext *domain.BotContext, imageName string) {
 	var chatID int64
 	if update.Message == nil {
