@@ -182,3 +182,24 @@ WHERE %s = $1);
 
 	return nil
 }
+func (r *userRepository) GetTeacherLists() ([]models.Teacher, error) {
+	SQLQuery := `
+SELECT telegram_id,teacher_name
+FROM bot.teacher
+`
+	rows, err := r.conn.Query(r.ctx, SQLQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	teacherLists := []models.Teacher{}
+	for rows.Next() {
+		var telegram_id int
+		var teacher_name string
+		if err := rows.Scan(&telegram_id, &teacher_name); err != nil {
+			return nil, fmt.Errorf("scan error: %w", err)
+		}
+		teacherLists = append(teacherLists, models.Teacher{Telegram_id: telegram_id, Teacher_name: teacher_name})
+	}
+	return teacherLists, nil
+}

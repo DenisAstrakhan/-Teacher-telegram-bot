@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	sensitive "github.com/LuYongwang/go-sensitive-word"
@@ -28,7 +29,7 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 	// Обработка команд
 	switch text {
 	case "/start":
-		if !userNew {
+		if userNew {
 			menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
 			return
 		}
@@ -96,17 +97,56 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		}
 		if _, exists := state.Data["teacher"]; exists {
 			//Пользователь вносит учителя в базу данных
-			BotContext.UserRepository.InsertTecher(int(userID), &update.Message.From.UserName, text)
+			err := BotContext.UserRepository.InsertTecher(int(userID), &update.Message.From.UserName, text)
+			if err != nil {
+				logger.Error(fmt.Sprintf("Ошибка при добавлении учителя в базу данных: %v", err))
+			}
+			logger.Info(fmt.Sprintf("Пользователь ID-%d добавлен в базу данных.", userID))
+			return
 		}
-		if _, exists := state.Data["student"]; exists {
-			//Пользователь вносит ученика в базу данных
-			BotContext.UserRepository.InsertUser(int(userID), &update.Message.From.UserName, state.Data["user name"], 12345)
-		}
+
 		if _, exists := state.Data["user name"]; exists {
 			//Пользователь вводит своё имя
-			state.Data["student"] = ""
 			state.Data["user name"] = text
+			teacherLists, err := BotContext.UserRepository.GetTeacherLists()
+			if err != nil {
+				logger.Error(fmt.Sprintf("Ошибка при получении полного списка учетелей: %v", err))
+				return
+			}
+			if len(teacherLists) == 0 {
+				//Список учителей пуст
+				logger.Debug("Список учителей пуст!!")
+			}
+			state.TeacherLists = teacherLists
+			// Формируем текст с нумерованным списком
+			var lists string
+			lists += "📋 *Выберите своего учителя:*\n\n"
+
+			// Создаём клавиатуру с номерами
+			var rows [][]tgbotapi.InlineKeyboardButton
+
+			for i, teacher := range teacherLists {
+				number := i + 1
+				lists += strconv.Itoa(number) + ". " + teacher.Teacher_name + "\n"
+
+				// Добавляем кнопку с номером
+				button := tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(number), strconv.Itoa(number))
+				rows = append(rows, tgbotapi.NewInlineKeyboardRow(button))
+			}
+			msg := tgbotapi.NewMessage(userID, lists)
+			if _, err := bot.Send(msg); err != nil {
+				logger.Error(fmt.Sprintf("Error sending message: %v", err))
+			}
+			// Отправляем клавиатуру с номерами
+			keyboardMsg := tgbotapi.NewMessage(userID, "👇 *Нажмите номер учителя:*")
+			keyboardMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
+			if _, err := bot.Send(keyboardMsg); err != nil {
+				logger.Error(fmt.Sprintf("Error sending keyboard: %v", err))
+				return
+			}
+			state.Data["student"] = ""
 			BotContext.SetUserState(userID, state)
+
 		}
 		logger.Debug("Simple input")
 	}
@@ -118,13 +158,13 @@ func validationMessage(text string, userID int64, logger *zap.Logger) bool {
 		sensitive.FilterOption{Type: sensitive.FilterDfa},
 	)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Error creating filter: %v\n", err))
+		logger.Error(fmt.Sprintf("Error creating filter: %v", err))
 		return false
 	}
 	// Загрузка словаря Русских ругательств из файла
 	err = filter.LoadDictPath("dictionaries/russian-bad-words.txt")
 	if err != nil {
-		logger.Error(fmt.Sprintf("Error loading dictionary: %v\n", err))
+		logger.Error(fmt.Sprintf("Error loading dictionary: %v", err))
 		return false
 	}
 	//Проверка запрещённых слов

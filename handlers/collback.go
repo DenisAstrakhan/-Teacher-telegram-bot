@@ -5,6 +5,7 @@ import (
 	gchat "TeacherBot/gigachat"
 	"TeacherBot/menu"
 	"fmt"
+	"strconv"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -36,6 +37,11 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 	switch data {
 	case "teacher":
 		state.Data["teacher"] = ""
+		msg := tgbotapi.NewMessage(userID, "Введите своё имя")
+		if _, err := bot.Send(msg); err != nil {
+			logger.Error(fmt.Sprintf("Error sending message: %v", err))
+			return
+		}
 	case "student":
 		state.Data["user name"] = ""
 		msg := tgbotapi.NewMessage(userID, "Введите своё имя")
@@ -223,8 +229,24 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 		gchat.SimpleTest(bot, update, BotContext, logger)
 		return
 	default:
-		logger.Info(fmt.Sprintf("User ID - %v: Failed to process callback", userID))
-		menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
+		//проверяем является ли введённый текст числом
+		choice, err := strconv.Atoi(data)
+		if err != nil {
+			logger.Info(fmt.Sprintf("User ID - %v: Failed to process callback", userID))
+			menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
+		}
+		if len(state.TeacherLists) >= choice-1 {
+			//Учитель есть в списке учителей
+			err := BotContext.UserRepository.InsertUser(int(userID), &update.CallbackQuery.From.UserName, state.Data["user name"], state.TeacherLists[choice-1].Telegram_id)
+			if err != nil {
+				logger.Error(fmt.Sprintf("Ошибка при добавлении пользователя в базу данных: %v", err))
+				return
+			}
+			logger.Info(fmt.Sprintf("Пользователь ID-%d добавлен в базу данных.", userID))
+			BotContext.SetUserState(userID, state)
+			menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
+		}
+
 	}
 	BotContext.SetUserState(userID, state)
 }

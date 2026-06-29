@@ -8,7 +8,7 @@ import (
 
 // Состояние пользователя
 type UserState struct {
-	Teacher        *bool
+	Teacher        *bool               //является ли пользователь учителем
 	CurrentMenu    string              // текущее меню
 	Data           map[string]string   // дополнительные данные
 	MessageID      int                 //ID сообщения для изменения
@@ -17,6 +17,7 @@ type UserState struct {
 	CorrectAnswers []string            //правельные ответы
 	AllQuestions   []string            //тест 10 вопросов
 	UserLastPress  map[int64]time.Time //Хранилище времени последнего нажатия
+	TeacherLists   []Teacher           //хранилеще списка учителей
 }
 
 func NewUserState(teacher *bool) UserState {
@@ -46,4 +47,9 @@ type Test struct {
 	Topic   string
 	Test    string
 	Result  int
+}
+
+type Teacher struct {
+	Telegram_id  int
+	Teacher_name string
 }
