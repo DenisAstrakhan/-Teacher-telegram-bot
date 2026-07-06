@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	sensitive "github.com/LuYongwang/go-sensitive-word"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 )
@@ -22,6 +21,11 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 	logger.Info(fmt.Sprintf("User ID - %v: message \"%s\" ", userID, text))
 	// Инициализируем состояние пользователя
 	userNew, state, err := initializationUserStates(logger, userID, BotContext, bot, update)
+	logger.Debug(fmt.Sprintf("userNew - %t", userNew))
+	if userNew && err == nil {
+		//Есл пользователь не найден спрашиваем "Кто он?"
+		menu.ShowWhoAreYouMenu(bot, update, logger, BotContext)
+	}
 	if err != nil {
 		logger.Error(fmt.Sprintf("error looking up user in database: %s", err))
 		return
@@ -30,29 +34,21 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 	switch text {
 	case "/start":
 		if userNew {
-			menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
 			return
 		}
-		logger.Debug(fmt.Sprintf("Message ID to delete: %v", state.MessageID))
-		msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
-		if _, err := bot.Send(msgToDelete); err != nil {
-			logger.Error(fmt.Sprintf("Error sending message: %v", err))
-		}
-		state.MessageID = 0
-		BotContext.SetUserState(userID, state)
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
-		return
 	default:
 		//Проверка на пустой ввод
 		if len(strings.Fields(text)) == 0 {
 			logger.Info(fmt.Sprintf("User %v entered nothing", userID))
 			return
 		}
-		if !validationMessage(text, userID, logger) {
+		//Проверка на коректность ввода
+		if !validationMessage(text, userID, BotContext, logger) {
 			logger.Debug("Uncorrect input")
 			logger.Debug(fmt.Sprintf("Message ID to delete: %v", state.MessageID))
 			msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
-			if _, err := bot.Send(msgToDelete); err != nil {
+			if _, err := bot.Request(msgToDelete); err != nil {
 				logger.Error(fmt.Sprintf("Error sending message: %v", err))
 			}
 			state.MessageID = 0
@@ -146,29 +142,13 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 			}
 			state.Data["student"] = ""
 			BotContext.SetUserState(userID, state)
-
 		}
 		logger.Debug("Simple input")
 	}
 }
-func validationMessage(text string, userID int64, logger *zap.Logger) bool {
-	// Инициализация фильтра
-	filter, err := sensitive.NewFilter(
-		sensitive.StoreOption{Type: sensitive.StoreMemory},
-		sensitive.FilterOption{Type: sensitive.FilterDfa},
-	)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Error creating filter: %v", err))
-		return false
-	}
-	// Загрузка словаря Русских ругательств из файла
-	err = filter.LoadDictPath("dictionaries/russian-bad-words.txt")
-	if err != nil {
-		logger.Error(fmt.Sprintf("Error loading dictionary: %v", err))
-		return false
-	}
+func validationMessage(text string, userID int64, BotContext *domain.BotContext, logger *zap.Logger) bool {
 	//Проверка запрещённых слов
-	if filter.IsSensitive(text) {
+	if BotContext.Filter.IsSensitive(text) {
 		logger.Info(fmt.Sprintf("User %v entered forbidden words", userID))
 		return false
 	}
@@ -189,33 +169,30 @@ func initializationUserStates(logger *zap.Logger, userID int64, BotContext *doma
 	userStates := BotContext.GetUserStattes()
 	state, exists := userStates[userID]
 	if !exists {
+		//Пользователя нет в программе
 		if err := BotContext.UserRepository.InitializationRow("bot.teacher", "telegram_id", userID); !errors.Is(err, sql.ErrNoRows) {
 			if err == nil {
+				//Пользователь есть в базе как учитель
 				teacher := true
-				state = createUserSate(&teacher, userID, logger, BotContext)
+				state = models.NewUserState(&teacher)
+				BotContext.SetUserState(userID, state)
+				logger.Info(fmt.Sprintf("Teacher fetched from database, ID: - %d", userID))
 				return false, state, nil
 			}
-			return false, models.UserState{}, err
+			return true, models.UserState{}, err
 		}
 		if err := BotContext.UserRepository.InitializationRow("bot.users", "telegram_id", userID); !errors.Is(err, sql.ErrNoRows) {
 			if err == nil {
+				//Пользователь есть в базе как ученик
 				teacher := false
-				state = createUserSate(&teacher, userID, logger, BotContext)
+				state = models.NewUserState(&teacher)
+				BotContext.SetUserState(userID, state)
+				logger.Info(fmt.Sprintf("User fetched from database, ID: -  %d", userID))
 				return false, state, nil
 			}
-			return false, models.UserState{}, err
+			return true, models.UserState{}, err
 		}
-		createUserSate(nil, userID, logger, BotContext)
-		menu.ShowWhoAreYouMenu(bot, update, logger, BotContext)
+		return true, models.UserState{}, nil
 	}
-	return true, state, nil
-}
-func createUserSate(teacher *bool, userID int64, logger *zap.Logger, BotContext *domain.BotContext) models.UserState {
-	logger.Info(fmt.Sprintf("Add New User: ID - %v", userID))
-	state := models.NewUserState(teacher)
-	state.Data["subject"] = ""
-	state.Data["Topic"] = ""
-	state.Data["level"] = ""
-	BotContext.SetUserState(userID, state)
-	return state
+	return false, state, nil
 }

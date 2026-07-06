@@ -1,6 +1,7 @@
 package main
 
 import (
+	filter "TeacherBot/dictionaries"
 	"TeacherBot/domain"
 	gchat "TeacherBot/gigachat"
 	"TeacherBot/handlers"
@@ -37,7 +38,13 @@ func main() {
 
 	// Создаём Giga chat клиента
 	GigaChat := gchat.StartBot()
-	BotContext := domain.NewBotContext(UserRepository, GigaChat, logger)
+	//Инициализируем фильтер матерных слов
+	filter, err := filter.InitFilter(logger)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Ошибка при создании фильтра нецензурных слов: %v", err))
+	}
+	//Создаём контекст бота
+	BotContext := domain.NewBotContext(UserRepository, GigaChat, filter, logger)
 	// Инициализируем бот
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("BOT_TOKEN"))
 	if err != nil {

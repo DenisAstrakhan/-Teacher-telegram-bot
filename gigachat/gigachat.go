@@ -199,13 +199,23 @@ func SelectSubject(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *dom
 	states := BotContext.GetUserStattes()
 	state := states[userID]
 	state.Data["subject"] = ""
-	msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
-	if _, err := bot.Send(msgToDelete); err != nil {
-		logger.Error(fmt.Sprintf("Error sending message: %v", err))
+	if state.MessageID != 0 {
+		logger.Debug(fmt.Sprintf("Attempting to delete message - UserID: %d, MessageID: %d", userID, state.MessageID))
+		msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
+		if _, err := bot.Request(msgToDelete); err != nil {
+			logger.Warn(fmt.Sprintf("Error sending message: %v", err))
+		}
 	}
 	BotContext.SetUserState(userID, state)
 	msg := tgbotapi.NewMessage(userID, "Напишите школьный предмет для которого нужно создать тест")
-	bot.Send(msg)
+	sentMsg, err := bot.Send(msg)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to send subject request: %v", err))
+		return
+	}
+	state.MessageID = sentMsg.MessageID
+	BotContext.SetUserState(userID, state)
+
 }
 func parseScoreDigit(input string) (int, bool) {
 	re := regexp.MustCompile(`--SCORE--\s*(\d+)`)

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	sensitive "github.com/LuYongwang/go-sensitive-word"
 	"github.com/tigusigalpa/gigachat-go"
 	"go.uber.org/zap"
 )
@@ -17,10 +18,11 @@ type BotContext struct {
 	GigaChat       *gigachat.Client           // клиент подключения к Giga Chat
 	UserStates     map[int64]models.UserState //хранилище состояний пользователей
 	Subjects       map[string]struct{}        //хранилеще предметов для формирования теста
+	Filter         *sensitive.Manager         //Фильтер для фильтрации мата
 	Mtx            sync.RWMutex               // для потокобезопасного доступа к UserStates и Giga Chat
 }
 
-func NewBotContext(userRepository UserRepository, client *gigachat.Client, logger *zap.Logger) *BotContext {
+func NewBotContext(userRepository UserRepository, client *gigachat.Client, filter *sensitive.Manager, logger *zap.Logger) *BotContext {
 	subjects, err := newSubjectList(logger)
 	if err != nil {
 		subjects = make(map[string]struct{})
@@ -31,6 +33,7 @@ func NewBotContext(userRepository UserRepository, client *gigachat.Client, logge
 		GigaChat:       client,
 		UserStates:     make(map[int64]models.UserState),
 		Subjects:       subjects,
+		Filter:         filter,
 		Mtx:            sync.RWMutex{},
 	}
 }

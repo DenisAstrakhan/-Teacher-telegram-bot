@@ -4,6 +4,7 @@ import (
 	"TeacherBot/domain"
 	gchat "TeacherBot/gigachat"
 	"TeacherBot/menu"
+	"TeacherBot/models"
 	"fmt"
 	"strconv"
 	"time"
@@ -14,41 +15,63 @@ import (
 
 func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext) {
 	// Отвечаем на callback (убираем "часики")
-	bot.Send(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
+	if _, err := bot.Request(tgbotapi.NewCallback(update.CallbackQuery.ID, "")); err != nil {
+		logger.Error(fmt.Sprintf("Error answering callback: %v", err))
+		return
+	}
 	userID := update.CallbackQuery.From.ID
 	data := update.CallbackQuery.Data
 	logger.Info(fmt.Sprintf("User ID - %v: press \"%s\" ", userID, data))
 	// Инициализируем состояние пользователя
-	_, state, err := initializationUserStates(logger, userID, BotContext, bot, update)
+	userNew, state, err := initializationUserStates(logger, userID, BotContext, bot, update)
+	logger.Debug(fmt.Sprintf("userNew: %t", userNew))
 	if err != nil {
 		logger.Error(fmt.Sprintf("error looking up user in database: %s", err))
 		return
 	}
-	//Защита от повторного нажатий
-	BotContext.Mtx.Lock()
-	if time.Since(state.UserLastPress[userID]) < 1000*time.Millisecond {
-		logger.Warn(fmt.Sprintf("User ID - %v: press again", userID))
+	if !userNew {
+		//Защита от повторного нажатий
+		BotContext.Mtx.Lock()
+		if time.Since(state.UserLastPress[userID]) < 1000*time.Millisecond {
+			logger.Warn(fmt.Sprintf("User ID - %v: press again", userID))
+			BotContext.Mtx.Unlock()
+			return
+		}
+		state.UserLastPress[userID] = time.Now()
 		BotContext.Mtx.Unlock()
-		return
 	}
-	state.UserLastPress[userID] = time.Now()
-	BotContext.Mtx.Unlock()
 	// Обработка callback данных
 	switch data {
 	case "teacher":
-		state.Data["teacher"] = ""
-		msg := tgbotapi.NewMessage(userID, "Введите своё имя")
-		if _, err := bot.Send(msg); err != nil {
-			logger.Error(fmt.Sprintf("Error sending message: %v", err))
+		if userNew {
+			teacher := true
+			state = models.NewUserState(&teacher)
+			state.Data["teacher"] = ""
+			BotContext.SetUserState(userID, state)
+			logger.Info(fmt.Sprintf("New teacher added, ID: - %d", userID))
+			msg := tgbotapi.NewMessage(userID, "Введите своё имя")
+			if _, err := bot.Send(msg); err != nil {
+				logger.Error(fmt.Sprintf("Error sending message: %v", err))
+				return
+			}
 			return
 		}
+
 	case "student":
-		state.Data["user name"] = ""
-		msg := tgbotapi.NewMessage(userID, "Введите своё имя")
-		if _, err := bot.Send(msg); err != nil {
-			logger.Error(fmt.Sprintf("Error sending message: %v", err))
+		if userNew {
+			teacher := false
+			state = models.NewUserState(&teacher)
+			state.Data["user name"] = ""
+			BotContext.SetUserState(userID, state)
+			logger.Info(fmt.Sprintf("New user added, ID: - %d", userID))
+			msg := tgbotapi.NewMessage(userID, "Введите своё имя")
+			if _, err := bot.Send(msg); err != nil {
+				logger.Error(fmt.Sprintf("Error sending message: %v", err))
+				return
+			}
 			return
 		}
+
 	case "simple":
 		state.CurrentMenu = "simple"
 		state.Data["test"] = "simple"
@@ -229,6 +252,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 		gchat.SimpleTest(bot, update, BotContext, logger)
 		return
 	default:
+
 		//проверяем является ли введённый текст числом
 		choice, err := strconv.Atoi(data)
 		if err != nil {

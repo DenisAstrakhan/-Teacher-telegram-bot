@@ -21,13 +21,17 @@ type UserState struct {
 }
 
 func NewUserState(teacher *bool) UserState {
-	return UserState{
+	state := UserState{
 		Teacher:       teacher,
 		CurrentMenu:   "main",
 		Data:          make(map[string]string),
 		UserLastPress: make(map[int64]time.Time),
 		MessageID:     0,
 	}
+	state.Data["subject"] = ""
+	state.Data["Topic"] = ""
+	state.Data["level"] = ""
+	return state
 }
 
 type User struct {
