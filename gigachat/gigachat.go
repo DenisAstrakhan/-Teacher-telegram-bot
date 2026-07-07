@@ -3,13 +3,16 @@ package gchat
 import (
 	"TeacherBot/domain"
 	"TeacherBot/menu"
+	"TeacherBot/models"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/tigusigalpa/gigachat-go"
@@ -62,7 +65,7 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *d
 	if _, exists := state.Data["score"]; !exists {
 		//Пользователь только начал тест
 		msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
-		if _, err := bot.Send(msgToDelete); err != nil {
+		if _, err := bot.Request(msgToDelete); err != nil {
 			logger.Error(fmt.Sprintf("Error sending message: %v", err))
 		}
 		logger.Info(fmt.Sprintf("User ID - %v: Is at the beginning of the test", userID))
@@ -111,9 +114,21 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *d
 		// Тест окончен
 		response := getLetterGrade(scoreII)
 		logger.Info(fmt.Sprintf("Test finish! User ID - %v result: %s", userID, response))
-		delete(state.Data, "score")
-		state.MessageID = 0
-		BotContext.SetUserState(userID, state)
+		jsonData, err := json.Marshal(state.Conversation)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Не удолось перевести переписку пользователяв json: %v", err))
+			finishInteractiveTest(BotContext, state, userID)
+			menu.ReturnStartMenu(bot, update, BotContext, logger, response)
+			return
+		}
+		if err := BotContext.UserRepository.InsertTests(state.Data["subject"], state.Data["level"], state.Data["topic"], string(jsonData), scoreII, time.Now(), int(userID)); err != nil {
+			logger.Error(fmt.Sprintf("Не удалось добавить тест в базу данных: %v", err))
+			finishInteractiveTest(BotContext, state, userID)
+			menu.ReturnStartMenu(bot, update, BotContext, logger, response)
+			return
+		}
+		logger.Info(fmt.Sprintf("Пользователь ID - %d,добавил тест в базу данных", userID))
+		finishInteractiveTest(BotContext, state, userID)
 		menu.ReturnStartMenu(bot, update, BotContext, logger, response)
 		return
 	}
@@ -145,6 +160,16 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain
 			response := getLetterGrade(checkscore)
 			logger.Info(fmt.Sprintf("Test finish! User ID - %v result: %s", userID, response))
 			menu.ReturnStartMenu(bot, update, BotContext, logger, response)
+			jsonData, err := json.Marshal(state.AllQuestions)
+			if err != nil {
+				logger.Error(fmt.Sprintf("Не удолось перевести список вопросов в json: %v", err))
+				return
+			}
+			if err := BotContext.UserRepository.InsertTests(state.Data["subject"], state.Data["level"], state.Data["topic"], string(jsonData), checkscore, time.Now(), int(userID)); err != nil {
+				logger.Error(fmt.Sprintf("Не удалось добавить тест в базу данных: %v", err))
+				return
+			}
+			logger.Info(fmt.Sprintf("Пользователь ID - %d,добавил тест в базу данных", userID))
 			return
 		}
 		question, correctAnswer, err := parseQuestion(state.AllQuestions[len])
@@ -318,4 +343,9 @@ func getLetterGrade(percentage int) string {
 	default:
 		return "F (Нужно повторить материал)"
 	}
+}
+func finishInteractiveTest(BotContext *domain.BotContext, state models.UserState, userID int64) {
+	delete(state.Data, "score")
+	state.MessageID = 0
+	BotContext.SetUserState(userID, state)
 }
