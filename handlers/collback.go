@@ -32,12 +32,12 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 	if !userNew {
 		//Защита от повторного нажатий
 		BotContext.Mtx.Lock()
-		if time.Since(state.UserLastPress[userID]) < 1000*time.Millisecond {
+		if time.Since(state.UserLastPress) < 1000*time.Millisecond {
 			logger.Warn(fmt.Sprintf("User ID - %v: press again", userID))
 			BotContext.Mtx.Unlock()
 			return
 		}
-		state.UserLastPress[userID] = time.Now()
+		state.UserLastPress = time.Now()
 		BotContext.Mtx.Unlock()
 	}
 	// Обработка callback данных
@@ -269,6 +269,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 			logger.Info(fmt.Sprintf("Пользователь ID-%d добавлен в базу данных.", userID))
 			BotContext.SetUserState(userID, state)
 			menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
+			return
 		}
 
 	}

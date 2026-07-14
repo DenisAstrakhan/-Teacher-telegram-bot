@@ -8,7 +8,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -34,6 +33,10 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 	switch text {
 	case "/start":
 		if userNew {
+			return
+		}
+		if state.Teacher != nil && *state.Teacher {
+			menu.ShowTeacherMenu(bot, update, logger, BotContext)
 			return
 		}
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
@@ -103,43 +106,8 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 
 		if _, exists := state.Data["user name"]; exists {
 			//Пользователь вводит своё имя
+			state := menu.ShowTecherList(bot, update, logger, BotContext)
 			state.Data["user name"] = text
-			teacherLists, err := BotContext.UserRepository.GetTeacherLists()
-			if err != nil {
-				logger.Error(fmt.Sprintf("Ошибка при получении полного списка учетелей: %v", err))
-				return
-			}
-			if len(teacherLists) == 0 {
-				//Список учителей пуст
-				logger.Debug("Список учителей пуст!!")
-			}
-			state.TeacherLists = teacherLists
-			// Формируем текст с нумерованным списком
-			var lists string
-			lists += "📋 *Выберите своего учителя:*\n\n"
-
-			// Создаём клавиатуру с номерами
-			var rows [][]tgbotapi.InlineKeyboardButton
-
-			for i, teacher := range teacherLists {
-				number := i + 1
-				lists += strconv.Itoa(number) + ". " + teacher.Teacher_name + "\n"
-
-				// Добавляем кнопку с номером
-				button := tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(number), strconv.Itoa(number))
-				rows = append(rows, tgbotapi.NewInlineKeyboardRow(button))
-			}
-			msg := tgbotapi.NewMessage(userID, lists)
-			if _, err := bot.Send(msg); err != nil {
-				logger.Error(fmt.Sprintf("Error sending message: %v", err))
-			}
-			// Отправляем клавиатуру с номерами
-			keyboardMsg := tgbotapi.NewMessage(userID, "👇 *Нажмите номер учителя:*")
-			keyboardMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
-			if _, err := bot.Send(keyboardMsg); err != nil {
-				logger.Error(fmt.Sprintf("Error sending keyboard: %v", err))
-				return
-			}
 			state.Data["student"] = ""
 			BotContext.SetUserState(userID, state)
 		}

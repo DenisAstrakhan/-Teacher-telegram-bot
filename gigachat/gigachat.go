@@ -121,7 +121,7 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *d
 			menu.ReturnStartMenu(bot, update, BotContext, logger, response)
 			return
 		}
-		if err := BotContext.UserRepository.InsertTests(state.Data["subject"], state.Data["level"], state.Data["topic"], string(jsonData), scoreII, time.Now(), int(userID)); err != nil {
+		if err := BotContext.UserRepository.InsertTests(state.Data["subject"], state.Data["level"], state.Data["Topic"], string(jsonData), scoreII, time.Now(), int(userID)); err != nil {
 			logger.Error(fmt.Sprintf("Не удалось добавить тест в базу данных: %v", err))
 			finishInteractiveTest(BotContext, state, userID)
 			menu.ReturnStartMenu(bot, update, BotContext, logger, response)
@@ -158,18 +158,18 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain
 				return
 			}
 			response := getLetterGrade(checkscore)
-			logger.Info(fmt.Sprintf("Test finish! User ID - %v result: %s", userID, response))
-			menu.ReturnStartMenu(bot, update, BotContext, logger, response)
 			jsonData, err := json.Marshal(state.AllQuestions)
 			if err != nil {
 				logger.Error(fmt.Sprintf("Не удолось перевести список вопросов в json: %v", err))
 				return
 			}
-			if err := BotContext.UserRepository.InsertTests(state.Data["subject"], state.Data["level"], state.Data["topic"], string(jsonData), checkscore, time.Now(), int(userID)); err != nil {
+			if err := BotContext.UserRepository.InsertTests(state.Data["subject"], state.Data["level"], state.Data["Topic"], string(jsonData), checkscore, time.Now(), int(userID)); err != nil {
 				logger.Error(fmt.Sprintf("Не удалось добавить тест в базу данных: %v", err))
 				return
 			}
 			logger.Info(fmt.Sprintf("Пользователь ID - %d,добавил тест в базу данных", userID))
+			logger.Info(fmt.Sprintf("Test finish! User ID - %v result: %s", userID, response))
+			menu.ReturnStartMenu(bot, update, BotContext, logger, response)
 			return
 		}
 		question, correctAnswer, err := parseQuestion(state.AllQuestions[len])

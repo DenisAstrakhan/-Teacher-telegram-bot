@@ -62,3 +62,9 @@ bot-run:
 
 bot-down:
 	docker compose down telegram-bot
+
+vpn-up:
+	adguardvpn-cli connect -l DE
+
+vpn-down:
+	adguardvpn-cli disconnect

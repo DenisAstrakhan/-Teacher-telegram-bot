@@ -91,7 +91,7 @@ func (r *userRepository) DeleteRow(table string, column string, index int) error
 
 func (r *userRepository) GetStudentsByTeacher(teacher_ID int, limit int) ([]models.User, error) {
 	SQLQuery := `
-SELECT telegram_id,full_name
+SELECT telegram_id,telegram_name ,full_name
 FROM bot.users
 WHERE teacher_ID = $1
 LIMIT $2
@@ -104,11 +104,12 @@ LIMIT $2
 	students := []models.User{}
 	for rows.Next() {
 		var telegram_id int
+		var telegram_name string
 		var full_name string
-		if err := rows.Scan(&telegram_id, &full_name); err != nil {
+		if err := rows.Scan(&telegram_id, &telegram_name, &full_name); err != nil {
 			return nil, fmt.Errorf("scan error: %w", err)
 		}
-		students = append(students, models.User{Telegram_id: telegram_id, Full_name: full_name})
+		students = append(students, models.User{Telegram_id: telegram_id, Telegram_name: telegram_name, Full_name: full_name})
 	}
 	return students, rows.Err()
 }
