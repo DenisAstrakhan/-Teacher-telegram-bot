@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -48,6 +49,11 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		}
 		//Проверка на коректность ввода
 		if !validationMessage(text, userID, BotContext, logger) {
+			if state.Teacher != nil && *state.Teacher {
+				//Учитель написал непреличное слова пока закрое на это глаза
+				logger.Warn("Учитель выражается не корректно")
+				return
+			}
 			logger.Debug("Uncorrect input")
 			logger.Debug(fmt.Sprintf("Message ID to delete: %v", state.MessageID))
 			msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
@@ -94,13 +100,14 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 			menu.ShowSetingMenu(bot, update, logger, BotContext)
 			return
 		}
-		if _, exists := state.Data["teacher"]; exists {
+		if state.CurrentMenu == "teacher" {
 			//Пользователь вносит учителя в базу данных
 			err := BotContext.UserRepository.InsertTecher(int(userID), &update.Message.From.UserName, text)
 			if err != nil {
 				logger.Error(fmt.Sprintf("Ошибка при добавлении учителя в базу данных: %v", err))
 			}
 			logger.Info(fmt.Sprintf("Пользователь ID-%d добавлен в базу данных.", userID))
+			menu.ShowTeacherMenu(bot, update, logger, BotContext)
 			return
 		}
 
@@ -110,6 +117,43 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 			state.Data["user name"] = text
 			state.Data["student"] = ""
 			BotContext.SetUserState(userID, state)
+			return
+		}
+		//Проверяем введено ли число
+		choice, err := strconv.Atoi(text)
+		if err != nil {
+			//Введено не число
+			return
+		}
+		if _, exists := state.Data["resoult edit"]; !exists {
+			//Введено просто число
+			logger.Debug("resoult edit не сущестует")
+			return
+		}
+		//Учитель исправляет результат теста
+		if choice <= 100 && choice >= 0 {
+			if err := BotContext.UserRepository.UpdateRow("bot.tests", "result", choice, "id", state.TestID); err != nil {
+				logger.Error(fmt.Sprintf("Ошибка при попытке редактировать результат теста в БД: %v", err))
+				msg := tgbotapi.NewMessage(userID, "Произошла ошибка при внесении изменений в БД. Попробуйте ещё раз")
+				if _, err := bot.Send(msg); err != nil {
+					logger.Error(fmt.Sprintf("Error sending mesage: %v", err))
+					return
+				}
+				return
+			}
+			delete(state.Data, "resoult edit")
+			logger.Info("Отценка исправлена в базе данных")
+			msg := tgbotapi.NewMessage(userID, "Отценка исправлена")
+			if _, err := bot.Send(msg); err != nil {
+				logger.Error(fmt.Sprintf("Error sending mesage: %v", err))
+				return
+			}
+			return
+		}
+		msg := tgbotapi.NewMessage(userID, "Введённое число не укладывается в диапазон от 0 до 100. Попробуйте ещё раз.")
+		if _, err := bot.Send(msg); err != nil {
+			logger.Error(fmt.Sprintf("Error sending mesage: %v", err))
+			return
 		}
 		logger.Debug("Simple input")
 	}

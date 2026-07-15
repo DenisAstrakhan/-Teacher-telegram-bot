@@ -42,11 +42,29 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 	}
 	// Обработка callback данных
 	switch data {
+	case "result":
+		state.CurrentMenu = "test list"
+		menu.ShowResultMenu(bot, update, logger, BotContext)
+	case "delete test":
+		if err := BotContext.UserRepository.DeleteRow("bot.tests", "id", state.TestID); err != nil {
+			menu.ShowTestListMenu(bot, update, logger, BotContext, "Не удалось удолить тест.")
+			logger.Warn(fmt.Sprintf("Не удолось удолить строку. Ошибка: %v", err))
+			return
+		}
+		state.CurrentMenu = "test"
+		menu.ShowTestList(bot, update, logger, BotContext, "Тест успешно удалён")
+		logger.Info(fmt.Sprintf("Тест ID - %d удолён.", state.TestID))
+	case "resoult edit":
+		state.Data["resoult edit"] = ""
+		msg := tgbotapi.NewMessage(userID, "Введите новую отценку, от 0 до 100.")
+		if _, err := bot.Send(msg); err != nil {
+			logger.Error(fmt.Sprintf("Error sending mesage: %v", err))
+		}
 	case "teacher":
 		if userNew {
 			teacher := true
 			state = models.NewUserState(&teacher)
-			state.Data["teacher"] = ""
+			state.CurrentMenu = "teacher"
 			BotContext.SetUserState(userID, state)
 			logger.Info(fmt.Sprintf("New teacher added, ID: - %d", userID))
 			msg := tgbotapi.NewMessage(userID, "Введите своё имя")
@@ -54,6 +72,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 				logger.Error(fmt.Sprintf("Error sending message: %v", err))
 				return
 			}
+			menu.ShowTeacherMenu(bot, update, logger, BotContext)
 			return
 		}
 
@@ -258,6 +277,33 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 		if err != nil {
 			logger.Info(fmt.Sprintf("User ID - %v: Failed to process callback", userID))
 			menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
+			return
+		}
+		//Проверем кто ввёл число учитель или ученик
+		if state.Teacher != nil && *state.Teacher {
+			if state.CurrentMenu == "teacher" {
+				//Учитель выбирает ученика
+				if len(state.StudentList) >= choice-1 {
+					//Ученик есть в списке
+					studentID := state.StudentList[choice-1].Telegram_id
+					state.StudentID = studentID
+					state.CurrentMenu = "test"
+					BotContext.SetUserState(userID, state)
+					menu.ShowTestList(bot, update, logger, BotContext, "👇 *Выберите тест:*")
+					return
+				}
+				logger.Warn("Ученика не оказалось в списке")
+				return
+			}
+			if state.CurrentMenu == "test" {
+				//Учитель выбирает тест
+				state.TestID = choice
+				state.CurrentMenu = "test list"
+				BotContext.SetUserState(userID, state)
+				menu.ShowTestListMenu(bot, update, logger, BotContext, "👇 Выберите действие:")
+				return
+			}
+
 		}
 		if len(state.TeacherLists) >= choice-1 {
 			//Учитель есть в списке учителей
@@ -280,6 +326,12 @@ func goBack(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.Bot
 	userStates := BotContext.UserStates
 	state := userStates[userID]
 	switch state.CurrentMenu {
+	case "test list":
+		state.CurrentMenu = "test"
+		menu.ShowTestList(bot, update, logger, BotContext, "👇 Выберите действие:")
+	case "test":
+		state.CurrentMenu = "teacher"
+		menu.ShowTeacherMenu(bot, update, logger, BotContext)
 	case "simple", "interactive":
 		state.CurrentMenu = "main"
 		menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
@@ -289,6 +341,9 @@ func goBack(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.Bot
 	case "setting":
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 		return
+	/*case "teacher":
+	menu.ShowTeacherMenu(bot, update, logger, BotContext)
+	return*/
 	default:
 		menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!")
 		state.CurrentMenu = "main"

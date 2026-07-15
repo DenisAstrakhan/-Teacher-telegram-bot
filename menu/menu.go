@@ -209,7 +209,7 @@ func ShowTeacherMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.L
 	//Получаем список учеников
 	usersList, err := BotContext.UserRepository.GetStudentsByTeacher(int(teacherID), 100)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Неудолосьполучить список учеников: %v", err))
+		logger.Error(fmt.Sprintf("Неудолось получить список учеников: %v", err))
 		return
 	}
 	//проверяем не пустой л список
@@ -217,6 +217,11 @@ func ShowTeacherMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.L
 		logger.Info(fmt.Sprintf("У учителя ID - %d нет учеников", teacherID))
 		return
 	}
+	UserState := BotContext.GetUserStattes()
+	state := UserState[teacherID]
+	state.StudentList = usersList
+	state.CurrentMenu = "teacher"
+	BotContext.SetUserState(teacherID, state)
 	// Формируем текст с нумерованным списком
 	var sb strings.Builder
 	sb.WriteString("📋 *Выберите ученика:*\n\n")
@@ -238,16 +243,10 @@ func ShowTeacherMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.L
 		rows = append(rows, tgbotapi.NewInlineKeyboardRow(button))
 	}
 	lists := sb.String()
-	msg := tgbotapi.NewMessage(teacherID, lists)
-	if _, err := bot.Send(msg); err != nil {
-		logger.Error(fmt.Sprintf("Error sending message: %v", err))
-	}
-	// Отправляем клавиатуру с номерами
-	keyboardMsg := tgbotapi.NewMessage(teacherID, "👇 *Нажмите на ученика:*")
-	keyboardMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
-	if _, err := bot.Send(keyboardMsg); err != nil {
-		logger.Error(fmt.Sprintf("Error sending keyboard: %v", err))
-		return
+	if state.MessageID == 0 {
+		sendMenu(bot, update, lists, tgbotapi.NewInlineKeyboardMarkup(rows...), logger, BotContext, "Image/Techer.jpg")
+	} else {
+		editMenu(bot, update, lists, tgbotapi.NewInlineKeyboardMarkup(rows...), logger, BotContext)
 	}
 }
 func ShowTecherList(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext) models.UserState {
@@ -256,14 +255,16 @@ func ShowTecherList(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Lo
 	state := userStates[userID]
 	teacherLists, err := BotContext.UserRepository.GetTeacherLists()
 	if err != nil {
-		logger.Error(fmt.Sprintf("Ошибка при получении полного списка учетелей: %v", err))
+		logger.Error(fmt.Sprintf("Не удалось получит полный список учетелей. Ошибка: %v", err))
 		return state
 	}
+	state.TeacherLists = teacherLists
 	if len(teacherLists) == 0 {
 		//Список учителей пуст
 		logger.Debug("Список учителей пуст!!")
+		return state
 	}
-	state.TeacherLists = teacherLists
+
 	// Формируем текст с нумерованным списком
 	lists := "📋 *Выберите своего учителя:*\n\n"
 
@@ -289,6 +290,87 @@ func ShowTecherList(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Lo
 	}
 	return state
 }
+func ShowTestList(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, Caption string) {
+	userID := getUserID(update)
+	userStates := BotContext.GetUserStattes()
+	state := userStates[userID]
+	testList, err := BotContext.UserRepository.GetTestByUser(state.StudentID)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Не удалось получить список тестов. Ошибка: %v", err))
+	}
+	state.TestList = testList
+	BotContext.SetUserState(userID, state)
+	if len(testList) == 0 {
+		logger.Info("У ученика нет пройденных тестов")
+		return
+	}
+	//Создаём клавиатуру
+	var rows [][]tgbotapi.InlineKeyboardButton
+	button := tgbotapi.NewInlineKeyboardButtonData("Показать отценки", "result")
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(button))
+	for _, test := range testList {
+
+		button := tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("Предмет: %s. Тема: %s. Отценка: %d", test.Subject, test.Topic, test.Result), strconv.Itoa(test.Id))
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(button))
+	}
+	button = tgbotapi.NewInlineKeyboardButtonData("🔙 Назад", "back")
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(button))
+
+	// Отправляем клавиатуру с номерами
+	editMenu(bot, update, Caption, tgbotapi.NewInlineKeyboardMarkup(rows...), logger, BotContext)
+	/*keyboardMsg := tgbotapi.NewMessage(userID, "👇 *Выберите тест:*")
+	keyboardMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
+	if _, err := bot.Send(keyboardMsg); err != nil {
+		logger.Error(fmt.Sprintf("Error sending keyboard: %v", err))
+	}*/
+
+}
+
+func ShowTestListMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, Caption string) {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Удолить тест", "delete test"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Исправить отценку", "resoult edit"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔙 Назад", "back"),
+		),
+	)
+	//отправляем меню
+	editMenu(bot, update, "👇 Выберите действие:", keyboard, logger, BotContext)
+	/*keyboardMsg := tgbotapi.NewMessage(userID, "👇 Выберите действие:")
+	keyboardMsg.ReplyMarkup = keyboard
+	if _, err := bot.Send(keyboardMsg); err != nil {
+		logger.Error(fmt.Sprintf("Error sending keyboard: %v", err))
+	}*/
+
+}
+
+func ShowResultMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext) {
+	chatID := getUserID(update)
+	userStates := BotContext.GetUserStattes()
+	state := userStates[chatID]
+	result, err := BotContext.UserRepository.GetResultByUser(state.StudentID, 100)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("Не удолось получить результаты тестов. Ошибка: %v", err))
+		return
+	}
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Отценки ученика ID - %d \n\n", state.StudentID)
+	for i, text := range result {
+		fmt.Fprintf(&sb, "%d. Результат: %d. Время окончания: %v \n", i+1, text.Result, text.Time_finish)
+	}
+	resultList := sb.String()
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔙 Назад", "back"),
+		),
+	)
+	editMenu(bot, update, resultList, keyboard, logger, BotContext)
+}
+
 func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyboard tgbotapi.InlineKeyboardMarkup, logger *zap.Logger, BotContext *domain.BotContext, imageName string) {
 	chatID := getUserID(update)
 	userStates := BotContext.GetUserStattes()

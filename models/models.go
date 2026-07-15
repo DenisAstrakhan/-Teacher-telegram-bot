@@ -16,8 +16,12 @@ type UserState struct {
 	UserAnswers    []string           //ответы пользователя
 	CorrectAnswers []string           //правельные ответы
 	AllQuestions   []string           //тест 10 вопросов
-	UserLastPress  time.Time          //Хранилище времени последнего нажатия
+	UserLastPress  time.Time          //Времени последнего нажатия
 	TeacherLists   []Teacher          //хранилеще списка учителей
+	StudentList    []User             //Хранилище списка учеников
+	TestList       []Test             //Хранилеще списка тестов
+	StudentID      int                //ID выбранного студента
+	TestID         int                //Id выбранного теста
 }
 
 func NewUserState(teacher *bool) UserState {
@@ -46,6 +50,7 @@ type UserResult struct {
 }
 
 type Test struct {
+	Id      int
 	Subject string
 	Level   string
 	Topic   string

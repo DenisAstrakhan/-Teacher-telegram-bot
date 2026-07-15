@@ -5,7 +5,6 @@ import (
 	"TeacherBot/models"
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -139,31 +138,32 @@ ORDER BY id ASC LIMIT $2
 	return results, rows.Err()
 }
 
-func (r *userRepository) GetTestByUser(id int, user_id int) (models.Test, error) {
+func (r *userRepository) GetTestByUser(user_id int) ([]models.Test, error) {
 	SQLQuery := `
-SELECT subject,level,topic,test,result
+SELECT id,subject,level,topic,test,result
 FROM bot.tests
-WHERE id = $1 AND user_id=$2
+WHERE user_id=$1
 `
-	var subject string
-	var level string
-	var topic string
-	var test string
-	var result int
-	row := r.conn.QueryRow(r.ctx, SQLQuery, id, user_id)
-	if err := row.Scan(&subject, &level, &topic, &test, &result); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return models.Test{}, fmt.Errorf("test not found: id=%d, user_id=%d", id, user_id)
-		}
-		return models.Test{}, fmt.Errorf("scan error: %w", err)
+
+	rows, err := r.conn.Query(r.ctx, SQLQuery, user_id)
+	if err != nil {
+		return nil, err
 	}
-	return models.Test{
-		Subject: subject,
-		Level:   level,
-		Topic:   topic,
-		Test:    test,
-		Result:  result,
-	}, nil
+	defer rows.Close()
+	testList := []models.Test{}
+	for rows.Next() {
+		var id int
+		var subject string
+		var level string
+		var topic string
+		var test string
+		var result int
+		if err := rows.Scan(&id, &subject, &level, &topic, &test, &result); err != nil {
+			return nil, fmt.Errorf("scan error: %w", err)
+		}
+		testList = append(testList, models.Test{Id: id, Subject: subject, Level: level, Topic: topic, Test: test, Result: result})
+	}
+	return testList, rows.Err()
 }
 func (r *userRepository) InitializationRow(table_name string, colum_name string, value any) error {
 	SQLQuery := fmt.Sprintf(`
