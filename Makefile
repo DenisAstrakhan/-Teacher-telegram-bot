@@ -1,6 +1,10 @@
 include .env
 export
 
+mysql-up:
+	docker compose up -d bot-mysql
+mysql-down:
+	docker compose down bot-mysql
 env-up:
 	@docker compose up -d bot-postgres
 

@@ -285,8 +285,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 				//Учитель выбирает ученика
 				if len(state.StudentList) >= choice-1 {
 					//Ученик есть в списке
-					studentID := state.StudentList[choice-1].Telegram_id
-					state.StudentID = studentID
+					state.Student = state.StudentList[choice-1]
 					state.CurrentMenu = "test"
 					BotContext.SetUserState(userID, state)
 					menu.ShowTestList(bot, update, logger, BotContext, "👇 *Выберите тест:*")

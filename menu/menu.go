@@ -228,18 +228,15 @@ func ShowTeacherMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.L
 	// Создаём клавиатуру с номерами
 	var rows [][]tgbotapi.InlineKeyboardButton
 	for i, user := range usersList {
-		number := i + 1
-		sb.WriteString(strconv.Itoa(number))
-		sb.WriteString(". ")
+		var url string
 		if user.Telegram_name == "" {
-			sb.WriteString("Нет ссылки!")
+			url = "Нет ссылки!"
 		} else {
-			sb.WriteString("https://t.me/")
-			sb.WriteString(user.Telegram_name)
+			url = fmt.Sprintf("https://t.me/%s", user.Telegram_name)
 		}
-		sb.WriteString("\n")
+		fmt.Fprintf(&sb, "%d. %s\n", i+1, url)
 		// Добавляем кнопку с номером
-		button := tgbotapi.NewInlineKeyboardButtonData(user.Full_name, strconv.Itoa(number))
+		button := tgbotapi.NewInlineKeyboardButtonData(user.Full_name, strconv.Itoa(i+1))
 		rows = append(rows, tgbotapi.NewInlineKeyboardRow(button))
 	}
 	lists := sb.String()
@@ -294,7 +291,7 @@ func ShowTestList(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logg
 	userID := getUserID(update)
 	userStates := BotContext.GetUserStattes()
 	state := userStates[userID]
-	testList, err := BotContext.UserRepository.GetTestByUser(state.StudentID)
+	testList, err := BotContext.UserRepository.GetTestByUser(state.Student.Telegram_id)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Не удалось получить список тестов. Ошибка: %v", err))
 	}
@@ -318,11 +315,6 @@ func ShowTestList(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logg
 
 	// Отправляем клавиатуру с номерами
 	editMenu(bot, update, Caption, tgbotapi.NewInlineKeyboardMarkup(rows...), logger, BotContext)
-	/*keyboardMsg := tgbotapi.NewMessage(userID, "👇 *Выберите тест:*")
-	keyboardMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
-	if _, err := bot.Send(keyboardMsg); err != nil {
-		logger.Error(fmt.Sprintf("Error sending keyboard: %v", err))
-	}*/
 
 }
 
@@ -340,11 +332,6 @@ func ShowTestListMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.
 	)
 	//отправляем меню
 	editMenu(bot, update, "👇 Выберите действие:", keyboard, logger, BotContext)
-	/*keyboardMsg := tgbotapi.NewMessage(userID, "👇 Выберите действие:")
-	keyboardMsg.ReplyMarkup = keyboard
-	if _, err := bot.Send(keyboardMsg); err != nil {
-		logger.Error(fmt.Sprintf("Error sending keyboard: %v", err))
-	}*/
 
 }
 
@@ -352,13 +339,13 @@ func ShowResultMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Lo
 	chatID := getUserID(update)
 	userStates := BotContext.GetUserStattes()
 	state := userStates[chatID]
-	result, err := BotContext.UserRepository.GetResultByUser(state.StudentID, 100)
+	result, err := BotContext.UserRepository.GetResultByUser(state.Student.Telegram_id, 100)
 	if err != nil {
 		logger.Warn(fmt.Sprintf("Не удолось получить результаты тестов. Ошибка: %v", err))
 		return
 	}
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "Отценки ученика ID - %d \n\n", state.StudentID)
+	fmt.Fprintf(&sb, "Отценки ученика %s \n\n", state.Student.Full_name)
 	for i, text := range result {
 		fmt.Fprintf(&sb, "%d. Результат: %d. Время окончания: %v \n", i+1, text.Result, text.Time_finish)
 	}

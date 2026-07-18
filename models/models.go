@@ -20,7 +20,7 @@ type UserState struct {
 	TeacherLists   []Teacher          //хранилеще списка учителей
 	StudentList    []User             //Хранилище списка учеников
 	TestList       []Test             //Хранилеще списка тестов
-	StudentID      int                //ID выбранного студента
+	Student        User               //Выбранный студент
 	TestID         int                //Id выбранного теста
 }
 
