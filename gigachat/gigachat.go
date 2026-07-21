@@ -243,7 +243,7 @@ func SelectSubject(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *dom
 
 }
 func parseScoreDigit(input string) (int, bool) {
-	re := regexp.MustCompile(`--SCORE--\s*(\d+)`)
+	re := regexp.MustCompile(`SCORE\s*(\d+)`)
 	matches := re.FindStringSubmatch(input)
 	if len(matches) < 2 {
 		return 0, false

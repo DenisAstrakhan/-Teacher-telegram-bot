@@ -44,4 +44,5 @@ type UserRepository interface {
 		colum_name string,
 		value any) error
 	GetTeacherLists() ([]models.Teacher, error)
+	Close() error
 }

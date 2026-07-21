@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS bot_tests;
+DROP TABLE IF EXISTS bot_users;
+DROP TABLE IF EXISTS bot_teacher;

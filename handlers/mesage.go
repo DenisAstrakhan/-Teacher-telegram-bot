@@ -132,7 +132,7 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		}
 		//Учитель исправляет результат теста
 		if choice <= 100 && choice >= 0 {
-			if err := BotContext.UserRepository.UpdateRow("bot.tests", "result", choice, "id", state.TestID); err != nil {
+			if err := BotContext.UserRepository.UpdateRow("tests", "result", choice, "id", state.TestID); err != nil {
 				logger.Error(fmt.Sprintf("Ошибка при попытке редактировать результат теста в БД: %v", err))
 				msg := tgbotapi.NewMessage(userID, "Произошла ошибка при внесении изменений в БД. Попробуйте ещё раз")
 				if _, err := bot.Send(msg); err != nil {
@@ -182,7 +182,7 @@ func initializationUserStates(logger *zap.Logger, userID int64, BotContext *doma
 	state, exists := userStates[userID]
 	if !exists {
 		//Пользователя нет в программе
-		if err := BotContext.UserRepository.InitializationRow("bot.teacher", "telegram_id", userID); !errors.Is(err, sql.ErrNoRows) {
+		if err := BotContext.UserRepository.InitializationRow("teacher", "telegram_id", userID); !errors.Is(err, sql.ErrNoRows) {
 			if err == nil {
 				//Пользователь есть в базе как учитель
 				teacher := true
@@ -193,7 +193,7 @@ func initializationUserStates(logger *zap.Logger, userID int64, BotContext *doma
 			}
 			return true, models.UserState{}, err
 		}
-		if err := BotContext.UserRepository.InitializationRow("bot.users", "telegram_id", userID); !errors.Is(err, sql.ErrNoRows) {
+		if err := BotContext.UserRepository.InitializationRow("users", "telegram_id", userID); !errors.Is(err, sql.ErrNoRows) {
 			if err == nil {
 				//Пользователь есть в базе как ученик
 				teacher := false

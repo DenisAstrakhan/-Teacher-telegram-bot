@@ -6,12 +6,13 @@ import (
 	gchat "TeacherBot/gigachat"
 	"TeacherBot/handlers"
 	"TeacherBot/logger"
-	postgres "TeacherBot/repository"
+	"TeacherBot/repository"
 	"context"
 	"fmt"
 	"log"
 	"os"
 
+	_ "github.com/go-sql-driver/mysql"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 )
@@ -31,10 +32,11 @@ func main() {
 	RepositoryContext, RepositoryCancel := context.WithCancel(context.Background())
 	defer RepositoryCancel()
 	//Создаём подключение к базе данных
-	UserRepository, err := postgres.NewUserRepository(RepositoryContext)
+	UserRepository, err := repository.NewUserRepository(RepositoryContext)
 	if err != nil {
 		fmt.Println("Ошибка при подключении к базе данных: %w", err)
 	}
+	defer UserRepository.Close()
 
 	// Создаём Giga chat клиента
 	GigaChat := gchat.StartBot()

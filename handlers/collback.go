@@ -46,7 +46,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 		state.CurrentMenu = "test list"
 		menu.ShowResultMenu(bot, update, logger, BotContext)
 	case "delete test":
-		if err := BotContext.UserRepository.DeleteRow("bot.tests", "id", state.TestID); err != nil {
+		if err := BotContext.UserRepository.DeleteRow("tests", "id", state.TestID); err != nil {
 			menu.ShowTestListMenu(bot, update, logger, BotContext, "Не удалось удолить тест.")
 			logger.Warn(fmt.Sprintf("Не удолось удолить строку. Ошибка: %v", err))
 			return
@@ -283,7 +283,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 		if state.Teacher != nil && *state.Teacher {
 			if state.CurrentMenu == "teacher" {
 				//Учитель выбирает ученика
-				if len(state.StudentList) >= choice-1 {
+				if choice > 0 && len(state.StudentList) >= choice {
 					//Ученик есть в списке
 					state.Student = state.StudentList[choice-1]
 					state.CurrentMenu = "test"
@@ -304,7 +304,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 			}
 
 		}
-		if len(state.TeacherLists) >= choice-1 {
+		if choice > 0 && len(state.TeacherLists) >= choice {
 			//Учитель есть в списке учителей
 			err := BotContext.UserRepository.InsertUser(int(userID), &update.CallbackQuery.From.UserName, state.Data["user name"], state.TeacherLists[choice-1].Telegram_id)
 			if err != nil {
