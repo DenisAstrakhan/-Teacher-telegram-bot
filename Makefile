@@ -2,11 +2,16 @@ include .env
 export
 POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@bot-postgres:5432/${POSTGRES_DB}?sslmode=disable
 MYSQL_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(bot-mysql:3306)/${MYSQL_DATABASE}
+SQLITE_EXEC=docker exec -i bot-env-sqlite sqlite3 /data/database.db
 
+sqlite-up:
+	@docker compose up -d bot-sqlite
+sqlite-down:
+	@docker compose down bot-sqlite
 mysql-up:
-	docker compose up -d bot-mysql
+	@docker compose up -d bot-mysql
 mysql-down:
-	docker compose down bot-mysql
+	@docker compose down bot-mysql
 # Дать права пользователю MySQL на создание схем и таблиц
 mysql-grant-privileges:
 	@echo "Выдача прав пользователю ${MYSQL_USER}..."
@@ -90,7 +95,74 @@ migrate-mysql-up:
 
 migrate-mysql-down:
 	@$(MAKE) migrate-mysql-action action=down
+# Создание файла базы данных
+migrate-sqlite-create-db:
+	@echo "📋 Создание файла базы данных на хосте..."
+	@sudo mkdir -p ./out/sqlitedata
+	@sudo chmod 777 ./out/sqlitedata
+	@if [ ! -f ./out/sqlitedata/database.db ]; then \
+		echo "  Файл не существует, создаю..."; \
+		sudo touch ./out/sqlitedata/database.db; \
+		sudo chmod 666 ./out/sqlitedata/database.db; \
+		echo "  ✅ Файл создан: ./out/sqlitedata/database.db"; \
+	else \
+		echo "  ✅ Файл уже существует"; \
+	fi
+	@echo "  📊 Проверка:"
+	@sudo ls -la ./out/sqlitedata/database.db
 
+migrate-sqlite-create:
+	@if [ -z "$(seq)" ]; then \
+		echo "❌ Отсутствует параметр seq. Пример: make migrate-sqlite-create seq=init"; \
+		exit 1; \
+	fi; \
+	@echo "📄 Создание миграции: $(seq)"; \
+	mkdir -p ./migrations/sqlite; \
+	NEXT_NUMBER=$$(printf "%06d" $$(($$(ls -1 ./migrations/sqlite/*.up.sql 2>/dev/null | wc -l) + 1))); \
+	UP_FILE="./migrations/sqlite/$${NEXT_NUMBER}_$(seq).up.sql"; \
+	DOWN_FILE="./migrations/sqlite/$${NEXT_NUMBER}_$(seq).down.sql"; \
+	echo "-- +migrate Up" > $$UP_FILE; \
+	echo "-- +migrate Down" > $$DOWN_FILE; \
+	echo "✅ Созданы файлы:"; \
+	echo "   $$UP_FILE"; \
+	echo "   $$DOWN_FILE"
+
+# Применить все миграции (ИСПРАВЛЕНО)
+migrate-sqlite-up:
+	@echo "⬆️  Применение миграций..."; \
+	for f in ./migrations/sqlite/*.up.sql; do \
+		if [ -f "$$f" ]; then \
+			echo "  Применение: $$(basename $$f)"; \
+			cat "$$f" | $(SQLITE_EXEC); \
+			if [ $$? -eq 0 ]; then \
+				echo "  ✅ $$(basename $$f)"; \
+			else \
+				echo "  ❌ Ошибка в $$(basename $$f)"; \
+				exit 1; \
+			fi; \
+		fi; \
+	done; \
+	echo "✅ Все миграции применены"; \
+	echo ""; \
+	echo "📊 Таблицы:"; \
+	docker exec bot-env-sqlite sqlite3 /data/database.db ".tables"
+
+# Откатить последнюю миграцию
+migrate-sqlite-down:
+	@echo "⬇️  Откат последней миграции..."; \
+	LAST_FILE=$$(ls -1 ./migrations/sqlite/*.down.sql 2>/dev/null | sort -n | tail -1); \
+	if [ -n "$$LAST_FILE" ]; then \
+		echo "  Откат: $$(basename $$LAST_FILE)"; \
+		cat "$$LAST_FILE" | $(SQLITE_EXEC); \
+		if [ $$? -eq 0 ]; then \
+			echo "  ✅ Откат выполнен"; \
+		else \
+			echo "  ❌ Ошибка отката"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "  ⚠️  Нет миграций для отката"; \
+	fi
 run-service:
 	go run main.go
 

@@ -17,6 +17,8 @@ func NewUserRepository(ctx context.Context) (domain.UserRepository, error) {
 		return newPostgresRepository(ctx)
 	case "mysql":
 		return newMysqlRepository(ctx)
+	case "sqlite":
+		return newSQLiteRepository(ctx)
 	default:
 		return nil, errors.New("Could not determine database type. REPOSITORY_TYPE environment variable is not set or has invalid value")
 	}
@@ -49,6 +51,29 @@ func newMysqlRepository(ctx context.Context) (domain.UserRepository, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 	return &mysqlRepository{
+		conn: conn,
+		ctx:  ctx,
+	}, nil
+}
+
+func newSQLiteRepository(ctx context.Context) (*SQLiteRepository, error) {
+	conn, err := sql.Open("sqlite3", "./out/sqlitedata/database.db?_foreign_keys=on&cache=shared")
+	//conn, err := sql.Open("sqlite3","/data/database.db?_foreign_keys=on&cache=shared")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open SQLite: %w", err)
+	}
+
+	// Проверяем подключение
+	if err := conn.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("failed to ping SQLite: %w", err)
+	}
+
+	// Включаем внешние ключи (дополнительная гарантия)
+	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = ON;"); err != nil {
+		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
+	}
+
+	return &SQLiteRepository{
 		conn: conn,
 		ctx:  ctx,
 	}, nil

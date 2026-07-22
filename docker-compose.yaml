@@ -37,7 +37,24 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-   
+
+  bot-sqlite:
+    image: nouchka/sqlite3:latest
+    container_name: bot-env-sqlite
+    volumes:
+      - ./out/sqlitedata:/data
+    stdin_open: true
+    tty: true
+    command: ["/data/database.db"]
+    restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
+    healthcheck:
+      test: ["CMD", "sqlite3", "/data/database.db", "SELECT 1;"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+      
   telegram-bot:
     image: telegram-bot
     pull_policy: never

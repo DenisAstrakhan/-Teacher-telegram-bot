@@ -105,6 +105,7 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 			err := BotContext.UserRepository.InsertTecher(int(userID), &update.Message.From.UserName, text)
 			if err != nil {
 				logger.Error(fmt.Sprintf("Ошибка при добавлении учителя в базу данных: %v", err))
+				return
 			}
 			logger.Info(fmt.Sprintf("Пользователь ID-%d добавлен в базу данных.", userID))
 			menu.ShowTeacherMenu(bot, update, logger, BotContext)
