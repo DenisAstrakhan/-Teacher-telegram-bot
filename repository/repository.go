@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -28,11 +29,13 @@ func NewUserRepository(ctx context.Context) (domain.UserRepository, error) {
 func newPostgresRepository(ctx context.Context) (domain.UserRepository, error) {
 	pgConnString := fmt.Sprintf("postgres://%s:%s@localhost:5432/%s?sslmode=disable", os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"), os.Getenv("POSTGRES_DB"))
 	//pgConnString := fmt.Sprintf("postgres://%s:%s@bot-postgres:5432/%s?sslmode=disable", os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"), os.Getenv("POSTGRES_DB"))
-	conn, err := pgx.Connect(ctx, pgConnString)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	conn, err := pgx.Connect(queryCtx, pgConnString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
-	if err := conn.Ping(ctx); err != nil {
+	if err := conn.Ping(queryCtx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 	return &postgresRepository{
@@ -43,11 +46,13 @@ func newPostgresRepository(ctx context.Context) (domain.UserRepository, error) {
 func newMysqlRepository(ctx context.Context) (domain.UserRepository, error) {
 	ConnString := fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s?parseTime=true&loc=Local", os.Getenv("MYSQL_USER"), os.Getenv("MYSQL_PASSWORD"), os.Getenv("MYSQL_DATABASE"))
 	//ConnString := fmt.Sprintf("%s:%s@tcp(bot-mysql:3306)/%s?parseTime=true&loc=Local", os.Getenv("MYSQL_USER"), os.Getenv("MYSQL_PASSWORD"), os.Getenv("MYSQL_DATABASE"))
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	conn, err := sql.Open("mysql", ConnString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
-	if err := conn.Ping(); err != nil {
+	if err := conn.PingContext(queryCtx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 	return &mysqlRepository{
@@ -62,9 +67,10 @@ func newSQLiteRepository(ctx context.Context) (*SQLiteRepository, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open SQLite: %w", err)
 	}
-
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	// Проверяем подключение
-	if err := conn.PingContext(ctx); err != nil {
+	if err := conn.PingContext(queryCtx); err != nil {
 		return nil, fmt.Errorf("failed to ping SQLite: %w", err)
 	}
 

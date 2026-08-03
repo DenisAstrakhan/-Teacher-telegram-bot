@@ -18,7 +18,9 @@ func (r *mysqlRepository) InsertTecher(telegram_id int, telegram_name *string, t
 INSERT INTO teacher (telegram_id, telegram_name, teacher_name)
 VALUES (?,?,?);
 `
-	_, err := r.conn.ExecContext(r.ctx, SQLQuery, telegram_id, telegram_name, teacher_name)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.conn.ExecContext(queryCtx, SQLQuery, telegram_id, telegram_name, teacher_name)
 	return err
 }
 
@@ -31,7 +33,9 @@ func (r *mysqlRepository) InsertUser(
 INSERT INTO users (telegram_id, telegram_name, full_name, teacher_ID)
 VALUES (?,?,?,?);
 `
-	_, err := r.conn.ExecContext(r.ctx, SQLQuery, telegram_id, telegram_name, full_name, teacher_ID)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.conn.ExecContext(queryCtx, SQLQuery, telegram_id, telegram_name, full_name, teacher_ID)
 	return err
 }
 
@@ -47,7 +51,9 @@ func (r *mysqlRepository) InsertTests(
 INSERT INTO tests (subject,level, topic, test,result,time_finish,user_id)
 VALUES (?,?,?,?,?,?,?);
 `
-	_, err := r.conn.ExecContext(r.ctx, SQLQuery, subject, level, topic, test, result, time_finish, user_id)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.conn.ExecContext(queryCtx, SQLQuery, subject, level, topic, test, result, time_finish, user_id)
 	return err
 }
 
@@ -58,13 +64,17 @@ func (r *mysqlRepository) UpdateRow(
 	indexColumn string,
 	index int) error {
 	SQLQuery := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s=?", table, column, indexColumn)
-	_, err := r.conn.ExecContext(r.ctx, SQLQuery, value, index)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.conn.ExecContext(queryCtx, SQLQuery, value, index)
 	return err
 }
 
 func (r *mysqlRepository) DeleteRow(table string, column string, index int) error {
 	SQLQuery := fmt.Sprintf("DELETE FROM %s WHERE %s=?", table, column)
-	_, err := r.conn.ExecContext(r.ctx, SQLQuery, index)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.conn.ExecContext(queryCtx, SQLQuery, index)
 	return err
 }
 
@@ -75,7 +85,9 @@ FROM users
 WHERE teacher_ID = ?
 LIMIT ?
 `
-	rows, err := r.conn.QueryContext(r.ctx, SQLQuery, teacher_ID, limit)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	rows, err := r.conn.QueryContext(queryCtx, SQLQuery, teacher_ID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +112,9 @@ FROM tests
 WHERE user_id = ?
 ORDER BY id ASC LIMIT ?
 `
-	rows, err := r.conn.QueryContext(r.ctx, SQLQuery, user_id, limit)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	rows, err := r.conn.QueryContext(queryCtx, SQLQuery, user_id, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -124,8 +138,9 @@ SELECT id,subject,level,topic,test,result
 FROM tests
 WHERE user_id=?
 `
-
-	rows, err := r.conn.QueryContext(r.ctx, SQLQuery, user_id)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	rows, err := r.conn.QueryContext(queryCtx, SQLQuery, user_id)
 	if err != nil {
 		return nil, err
 	}
@@ -151,8 +166,10 @@ SELECT EXISTS(
 SELECT * FROM %s 
 WHERE %s = ?);
 `, table_name, colum_name)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
 	var exists bool
-	err := r.conn.QueryRowContext(r.ctx, SQLQuery, value).Scan(&exists)
+	err := r.conn.QueryRowContext(queryCtx, SQLQuery, value).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check row existence: %w", err)
 	}
@@ -168,7 +185,9 @@ func (r *mysqlRepository) GetTeacherLists() ([]models.Teacher, error) {
 SELECT telegram_id,teacher_name
 FROM teacher
 `
-	rows, err := r.conn.QueryContext(r.ctx, SQLQuery)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	rows, err := r.conn.QueryContext(queryCtx, SQLQuery)
 	if err != nil {
 		return nil, err
 	}

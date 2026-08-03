@@ -20,7 +20,9 @@ func (r *postgresRepository) InsertTecher(telegram_id int, telegram_name *string
 INSERT INTO bot.teacher (telegram_id, telegram_name, teacher_name)
 VALUES ($1,$2,$3);
 `
-	_, err := r.conn.Exec(r.ctx, SQLQuery, telegram_id, telegram_name, teacher_name)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.conn.Exec(queryCtx, SQLQuery, telegram_id, telegram_name, teacher_name)
 	return err
 }
 
@@ -33,7 +35,9 @@ func (r *postgresRepository) InsertUser(
 INSERT INTO bot.users (telegram_id, telegram_name, full_name, teacher_ID)
 VALUES ($1,$2,$3,$4);
 `
-	_, err := r.conn.Exec(r.ctx, SQLQuery, telegram_id, telegram_name, full_name, teacher_ID)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.conn.Exec(queryCtx, SQLQuery, telegram_id, telegram_name, full_name, teacher_ID)
 	return err
 }
 
@@ -49,7 +53,9 @@ func (r *postgresRepository) InsertTests(
 INSERT INTO bot.tests (subject,level, topic, test,result,time_finish,user_id)
 VALUES ($1,$2,$3,$4,$5,$6,$7);
 `
-	_, err := r.conn.Exec(r.ctx, SQLQuery, subject, level, topic, test, result, time_finish, user_id)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.conn.Exec(queryCtx, SQLQuery, subject, level, topic, test, result, time_finish, user_id)
 	return err
 }
 
@@ -59,14 +65,18 @@ func (r *postgresRepository) UpdateRow(
 	value any,
 	indexColumn string,
 	index int) error {
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
 	SQLQuery := fmt.Sprintf("UPDATE %s SET %s = $1 WHERE %s=$2", "bot."+table, column, indexColumn)
-	_, err := r.conn.Exec(r.ctx, SQLQuery, value, index)
+	_, err := r.conn.Exec(queryCtx, SQLQuery, value, index)
 	return err
 }
 
 func (r *postgresRepository) DeleteRow(table string, column string, index int) error {
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
 	SQLQuery := fmt.Sprintf("DELETE FROM %s WHERE %s=$1", "bot."+table, column)
-	_, err := r.conn.Exec(r.ctx, SQLQuery, index)
+	_, err := r.conn.Exec(queryCtx, SQLQuery, index)
 	return err
 }
 
@@ -77,7 +87,9 @@ FROM bot.users
 WHERE teacher_ID = $1
 LIMIT $2
 `
-	rows, err := r.conn.Query(r.ctx, SQLQuery, teacher_ID, limit)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	rows, err := r.conn.Query(queryCtx, SQLQuery, teacher_ID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +114,9 @@ FROM bot.tests
 WHERE user_id = $1
 ORDER BY id ASC LIMIT $2
 `
-	rows, err := r.conn.Query(r.ctx, SQLQuery, user_id, limit)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	rows, err := r.conn.Query(queryCtx, SQLQuery, user_id, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -126,8 +140,9 @@ SELECT id,subject,level,topic,test,result
 FROM bot.tests
 WHERE user_id=$1
 `
-
-	rows, err := r.conn.Query(r.ctx, SQLQuery, user_id)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	rows, err := r.conn.Query(queryCtx, SQLQuery, user_id)
 	if err != nil {
 		return nil, err
 	}
@@ -153,8 +168,10 @@ SELECT EXISTS(
 SELECT * FROM %s 
 WHERE %s = $1);
 `, "bot."+table_name, colum_name)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
 	var exists bool
-	err := r.conn.QueryRow(r.ctx, SQLQuery, value).Scan(&exists)
+	err := r.conn.QueryRow(queryCtx, SQLQuery, value).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check row existence: %w", err)
 	}
@@ -170,7 +187,9 @@ func (r *postgresRepository) GetTeacherLists() ([]models.Teacher, error) {
 SELECT telegram_id,teacher_name
 FROM bot.teacher
 `
-	rows, err := r.conn.Query(r.ctx, SQLQuery)
+	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	defer cancel()
+	rows, err := r.conn.Query(queryCtx, SQLQuery)
 	if err != nil {
 		return nil, err
 	}
