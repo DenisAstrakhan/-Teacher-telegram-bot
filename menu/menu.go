@@ -1,14 +1,18 @@
 package menu
 
 import (
+	"TeacherBot/domain"
 	"TeacherBot/models"
+	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 )
 
-func ShowStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext, Caption string) {
+func ShowStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, Caption string, ctx context.Context) {
 	// Создаем инлайн клавиатуру
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
@@ -24,10 +28,21 @@ func ShowStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Log
 			tgbotapi.NewInlineKeyboardButtonURL("🌐 Repositorie", "https://github.com/DenisAstrakhan/-Teacher-telegram-bot"),
 		),
 	)
-	sendMenu(bot, update, Caption, keyboard, logger, BotContext, "Image/start.jpg")
+	chatID := getUserID(update)
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(chatID), ctx)
+	if err != nil {
+		logger.Error("Failed to retrieve data from cache: %w ", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
+		return
+	}
+	if state.MessageID == 0 {
+		sendMenu(bot, update, Caption, keyboard, logger, BotContext, "Image/start.jpg", ctx)
+	} else {
+		editMenu(bot, update, Caption, keyboard, logger, BotContext, ctx)
+	}
 }
 
-func ShowLevelMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
+func ShowLevelMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, ctx context.Context) {
 	//level: Beginner (A1-A2) - Новичок, Intermediate (B1-B2) - Средний, Advanced (C1-C2) - Продвинутый,
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
@@ -43,10 +58,9 @@ func ShowLevelMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Log
 			tgbotapi.NewInlineKeyboardButtonData("🔙 Назад", "back"),
 		),
 	)
-
-	sendMenu(bot, update, "Выберите сложность", keyboard, logger, BotContext, "Image/start.jpg")
+	editMenu(bot, update, "Выберите сложность", keyboard, logger, BotContext, ctx)
 }
-func ShowBeginnerMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
+func ShowBeginnerMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, ctx context.Context) {
 	/*
 	   Topic1: Present Simple & Present Continuous (базовое сравнение)
 	   Topic2: There is / There are + предлоги места
@@ -75,10 +89,9 @@ func ShowBeginnerMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.
 			tgbotapi.NewInlineKeyboardButtonData("🔙 Назад", "back"),
 		),
 	)
-
-	sendMenu(bot, update, "Выберите тему", keyboard, logger, BotContext, "Image/start.jpg")
+	editMenu(bot, update, "Выберите тему", keyboard, logger, BotContext, ctx)
 }
-func ShowIntermediateMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
+func ShowIntermediateMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, ctx context.Context) {
 	/*
 		Topic1: Present Perfect vs. Past Simple
 		Topic2: Условные предложения (Conditionals: 0, 1, 2 типы)
@@ -106,11 +119,10 @@ func ShowIntermediateMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *
 			tgbotapi.NewInlineKeyboardButtonData("🔙 Назад", "back"),
 		),
 	)
-
-	sendMenu(bot, update, "Выберите тему", keyboard, logger, BotContext, "Image/start.jpg")
+	editMenu(bot, update, "Выберите тему", keyboard, logger, BotContext, ctx)
 }
 
-func ShowAdvancMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
+func ShowAdvancMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, ctx context.Context) {
 	/*
 		Topic1: Инверсия (Never have I seen... / Not only did he...)
 		Topic2: Смешанные условные предложения (Mixed Conditionals)
@@ -139,10 +151,9 @@ func ShowAdvancMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Lo
 			tgbotapi.NewInlineKeyboardButtonData("🔙 Назад", "back"),
 		),
 	)
-
-	sendMenu(bot, update, "Выберите тему", keyboard, logger, BotContext, "Image/start.jpg")
+	editMenu(bot, update, "Выберите тему", keyboard, logger, BotContext, ctx)
 }
-func ShowTestMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, logger *zap.Logger, BotContext *models.BotContext) {
+func ShowTestMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, logger *zap.Logger, BotContext *domain.BotContext, ctx context.Context) {
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("A", "A"),
@@ -153,9 +164,9 @@ func ShowTestMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, 
 			tgbotapi.NewInlineKeyboardButtonData("D", "D"),
 		),
 	)
-	sendMenu(bot, update, Caption, keyboard, logger, BotContext, "Image/start.jpg")
+	editMenu(bot, update, Caption, keyboard, logger, BotContext, ctx)
 }
-func ShowSetingMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
+func ShowSetingMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, ctx context.Context) {
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("📝 Простой тест", "simple"),
@@ -167,96 +178,259 @@ func ShowSetingMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Lo
 			tgbotapi.NewInlineKeyboardButtonData("🔙 Назад", "back"),
 		),
 	)
-	sendMenu(bot, update, "Выберите тип теста", keyboard, logger, BotContext, "Image/start.jpg")
+	sendMenu(bot, update, "Выберите тип теста", keyboard, logger, BotContext, "Image/start.jpg", ctx)
 }
-func ShowWarningMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *models.BotContext) {
+func ShowWarningMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, ctx context.Context) {
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Простите пожалуйста я так больше не буду", "sorry"),
 		),
 	)
-	sendMenu(bot, update, "Ненормативная лексика! За тобой уже выехали.", keyboard, logger, BotContext, "Image/warning.jpg")
+	sendMenu(bot, update, "Ненормативная лексика! За тобой уже выехали.", keyboard, logger, BotContext, "Image/warning.jpg", ctx)
 }
-func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyboard tgbotapi.InlineKeyboardMarkup, logger *zap.Logger, BotContext *models.BotContext, imageName string) {
-	var chatID int64
-	if update.Message == nil {
-		chatID = update.CallbackQuery.From.ID
-		userStates := BotContext.GetUserStattes()
-		state := userStates[chatID]
-		logger.Debug(fmt.Sprintf("MessageID: %v", state.MessageID))
-		if _, exist := state.Data["nopoto"]; exist {
-			editMessage := tgbotapi.NewEditMessageText(chatID, state.MessageID, Caption)
-			editMessage.ReplyMarkup = &keyboard
-			_, err := bot.Send(editMessage)
-			if err != nil {
-				logger.Debug(fmt.Sprintf("Error edit photo message: %v", err))
-			}
-			return
-		}
-		editMessage := tgbotapi.NewEditMessageCaption(chatID, state.MessageID, Caption)
-		editMessage.ReplyMarkup = &keyboard
-		_, err := bot.Send(editMessage)
-		if err != nil {
-			logger.Debug(fmt.Sprintf("Error edit photo message: %v", err))
-		}
+func ShowWhoAreYouMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext) {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Учитель", "teacher"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Ученик", "student"),
+		),
+	)
+	chatID := getUserID(update)
+	photoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath("Image/WhoAreYou.jpeg"))
+	photoMsg.Caption = "Кто ты, воин?"
+	photoMsg.ReplyMarkup = keyboard
+	_, err := bot.Send(photoMsg)
+	if err != nil {
+		//Не удалось отправить сообщение
+		logger.Error("Error send photo: %w", zap.Error(err))
 		return
 	}
-	chatID = update.Message.Chat.ID
-	userStates := BotContext.GetUserStattes()
-	state := userStates[chatID]
-	if state.MessageID == 0 {
-		//Первое сообщение пользователю
-		photoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imageName))
-		photoMsg.Caption = Caption
-		photoMsg.ReplyMarkup = keyboard
-		sendMessage, err := bot.Send(photoMsg)
-		if err != nil {
-			// Если фото не отправилось (файл не найден), отправляем только текст
-			logger.Error(fmt.Sprintf("Error send photo: %v", err))
-			textMsg := tgbotapi.NewMessage(chatID, Caption)
-			textMsg.ReplyMarkup = keyboard
-			sendMessage, _ = bot.Send(textMsg)
-			state.MessageID = sendMessage.MessageID
-			state.Data["nopoto"] = ""
-			BotContext.SetUserState(chatID, state)
-			return
-		}
+}
 
-		state.MessageID = sendMessage.MessageID
-		BotContext.SetUserState(chatID, state)
-		logger.Info(fmt.Sprintf("Message ID: %v", sendMessage.MessageID))
+func ShowTeacherMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, ctx context.Context) {
+	teacherID := getUserID(update)
+	//Получаем список учеников
+	usersList, err := BotContext.UserRepository.DataRepository.GetStudentsByTeacher(int(teacherID), 100, ctx)
+	if err != nil {
+		logger.Error("Failed to retrieve student list: %w", zap.Error(err))
 		return
 	}
-	//Повторное сообщение пользователю
-	if update.Message.Photo != nil {
-		logger.Debug("update.Message.Photo != nil")
-		//Пользователь отправил сообщение с фото
-		editMessage := tgbotapi.NewEditMessageCaption(chatID, state.MessageID, Caption)
-		editMessage.ReplyMarkup = &keyboard
-		_, err := bot.Send(editMessage)
-		if err != nil {
-			logger.Debug(fmt.Sprintf("Error edit photo message: %v", err))
+	//проверяем не пустой л список
+	if len(usersList) == 0 {
+		logger.Sugar().Infof("Teacher %d has no students", teacherID)
+		return
+	}
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(teacherID), ctx)
+	if err != nil {
+		logger.Error("Failed to retrieve data from cache: %w ", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
+		return
+	}
+	state.StudentList = usersList
+	state.CurrentMenu = "teacher"
+	SetState(bot, update, BotContext, logger, teacherID, state, ctx)
+	// Формируем текст с нумерованным списком
+	var sb strings.Builder
+	sb.WriteString("📋 *Выберите ученика:*\n\n")
+	// Создаём клавиатуру с номерами
+	var rows [][]tgbotapi.InlineKeyboardButton
+	for i, user := range usersList {
+		var url string
+		if user.Telegram_name == "" {
+			url = "Нет ссылки!"
+		} else {
+			url = fmt.Sprintf("https://t.me/%s", user.Telegram_name)
 		}
+		fmt.Fprintf(&sb, "%d. %s\n", i+1, url)
+		// Добавляем кнопку с номером
+		button := tgbotapi.NewInlineKeyboardButtonData(user.Full_name, strconv.Itoa(i+1))
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(button))
+	}
+	lists := sb.String()
+	if state.MessageID == 0 {
+		sendMenu(bot, update, lists, tgbotapi.NewInlineKeyboardMarkup(rows...), logger, BotContext, "Image/Techer.jpg", ctx)
+	} else {
+		editMenu(bot, update, lists, tgbotapi.NewInlineKeyboardMarkup(rows...), logger, BotContext, ctx)
+	}
+}
+func ShowTecherList(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, ctx context.Context) models.UserState {
+	userID := getUserID(update)
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(userID), ctx)
+	if err != nil {
+		logger.Error("Failed to retrieve data from cache: %w ", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
+		return state
+	}
+	teacherLists, err := BotContext.UserRepository.DataRepository.GetTeacherLists(ctx)
+	if err != nil {
+		logger.Error("Failed to retrieve full teacher list: %w", zap.Error(err))
+		return state
+	}
+	state.TeacherLists = teacherLists
+	if len(teacherLists) == 0 {
+		//Список учителей пуст
+		logger.Debug("Teacher list is empty")
+		return state
+	}
+
+	// Формируем текст с нумерованным списком
+	lists := "📋 *Выберите своего учителя:*\n\n"
+
+	// Создаём клавиатуру с номерами
+	var rows [][]tgbotapi.InlineKeyboardButton
+
+	for i, teacher := range teacherLists {
+		number := i + 1
+		// Добавляем кнопку с номером
+		button := tgbotapi.NewInlineKeyboardButtonData(teacher.Teacher_name, strconv.Itoa(number))
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(button))
+	}
+	msg := tgbotapi.NewMessage(userID, lists)
+	if _, err := bot.Send(msg); err != nil {
+		logger.Error("Error sending message: %w", zap.Error(err))
+	}
+	// Отправляем клавиатуру с номерами
+	keyboardMsg := tgbotapi.NewMessage(userID, "👇 *Нажмите номер учителя:*")
+	keyboardMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
+	if _, err := bot.Send(keyboardMsg); err != nil {
+		logger.Error("Error sending keyboard: %w", zap.Error(err))
+		return state
+	}
+	return state
+}
+func ShowTestList(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, Caption string, ctx context.Context) {
+	userID := getUserID(update)
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(userID), ctx)
+	if err != nil {
+		logger.Error("Failed to retrieve data from cache: %w ", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
 		return
 	}
-	//Пользователь отправил сообщения без фото
-	editMessage := tgbotapi.NewEditMessageText(chatID, state.MessageID, Caption)
+	testList, err := BotContext.UserRepository.DataRepository.GetTestByUser(state.Student.Telegram_id, ctx)
+	if err != nil {
+		logger.Error("Failed to retrieve test list: %w", zap.Error(err))
+	}
+	state.TestList = testList
+	SetState(bot, update, BotContext, logger, userID, state, ctx)
+	if len(testList) == 0 {
+		logger.Info("Student has no completed tests")
+		return
+	}
+	//Создаём клавиатуру
+	var rows [][]tgbotapi.InlineKeyboardButton
+	button := tgbotapi.NewInlineKeyboardButtonData("Показать отценки", "result")
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(button))
+	for _, test := range testList {
+
+		button := tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("Предмет: %s. Тема: %s. Отценка: %d", test.Subject, test.Topic, test.Result), strconv.Itoa(test.Id))
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(button))
+	}
+	button = tgbotapi.NewInlineKeyboardButtonData("🔙 Назад", "back")
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(button))
+
+	// Отправляем клавиатуру с номерами
+	editMenu(bot, update, Caption, tgbotapi.NewInlineKeyboardMarkup(rows...), logger, BotContext, ctx)
+
+}
+
+func ShowTestListMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, Caption string, ctx context.Context) {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Удолить тест", "delete test"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Исправить отценку", "resoult edit"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔙 Назад", "back"),
+		),
+	)
+	//отправляем меню
+	editMenu(bot, update, "👇 Выберите действие:", keyboard, logger, BotContext, ctx)
+
+}
+
+func ShowResultMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, ctx context.Context) {
+	chatID := getUserID(update)
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(chatID), ctx)
+	if err != nil {
+		logger.Error("Failed to retrieve data from cache: %w ", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
+		return
+	}
+	result, err := BotContext.UserRepository.DataRepository.GetResultByUser(state.Student.Telegram_id, 100, ctx)
+	if err != nil {
+		logger.Sugar().Warnf("Failed to retrieve test results: %w", zap.Error(err))
+		return
+	}
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Отценки ученика %s \n\n", state.Student.Full_name)
+	for i, text := range result {
+		fmt.Fprintf(&sb, "%d. Результат: %d. Время окончания: %v \n", i+1, text.Result, text.Time_finish)
+	}
+	resultList := sb.String()
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔙 Назад", "back"),
+		),
+	)
+	editMenu(bot, update, resultList, keyboard, logger, BotContext, ctx)
+}
+
+func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyboard tgbotapi.InlineKeyboardMarkup, logger *zap.Logger, BotContext *domain.BotContext, imageName string, ctx context.Context) {
+	chatID := getUserID(update)
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(chatID), ctx)
+	if err != nil {
+		logger.Error("Failed to retrieve data from cache: %w ", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
+		return
+	}
+	photoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imageName))
+	photoMsg.Caption = Caption
+	photoMsg.ReplyMarkup = keyboard
+	sendMessage, err := bot.Send(photoMsg)
+	if err != nil {
+		//Не удалось отправить сообщение
+		logger.Error(fmt.Sprintf("Error send photo: %v", err))
+		return
+	}
+	state.MessageID = sendMessage.MessageID
+	logger.Debug(fmt.Sprintf("Saving MessageID: %d for chat: %d", state.MessageID, chatID))
+	SetState(bot, update, BotContext, logger, chatID, state, ctx)
+}
+
+func editMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyboard tgbotapi.InlineKeyboardMarkup, logger *zap.Logger, BotContext *domain.BotContext, ctx context.Context) {
+	chatID := getUserID(update)
+	state, errget := BotContext.UserRepository.CacheRepository.Get(int(chatID), ctx)
+	if errget != nil {
+		logger.Error("Failed to retrieve data from cache: %w ", zap.Error(errget))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
+		return
+	}
+	logger.Debug(fmt.Sprintf("Trying to edit MessageID: %d for chat: %d", state.MessageID, chatID))
+	editMessage := tgbotapi.NewEditMessageCaption(chatID, state.MessageID, Caption)
 	editMessage.ReplyMarkup = &keyboard
 	_, err := bot.Send(editMessage)
 	if err != nil {
-		logger.Debug(fmt.Sprintf("Error edit text message: %v", err))
+		logger.Sugar().Debugf("Error edit photo message: %v", err)
 	}
-	logger.Debug("sendMenu finish")
 }
-func ReturnStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *models.BotContext, logger *zap.Logger, Caption string) {
+
+func ReturnStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger, Caption string, ctx context.Context) {
 	var userID int64
 	if update.Message == nil {
 		userID = update.CallbackQuery.From.ID
 	} else {
 		userID = update.Message.Chat.ID
 	}
-	userStates := BotContext.GetUserStattes()
-	state := userStates[userID]
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(userID), ctx)
+	if err != nil {
+		logger.Error("Failed to retrieve data from cache: %w", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
+		return
+	}
 	state.AllQuestions = nil
 	state.UserAnswers = nil
 	state.CorrectAnswers = nil
@@ -266,6 +440,22 @@ func ReturnStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *m
 	state.Data["Topic"] = ""
 	state.Data["level"] = ""
 	delete(state.Data, "score")
-	BotContext.SetUserState(userID, state)
-	ShowStartMenu(bot, update, logger, BotContext, Caption)
+	SetState(bot, update, BotContext, logger, userID, state, ctx)
+	ShowStartMenu(bot, update, logger, BotContext, Caption, ctx)
+}
+func getUserID(update tgbotapi.Update) int64 {
+	var chatID int64
+	if update.Message == nil {
+		chatID = update.CallbackQuery.From.ID
+		return chatID
+	}
+	chatID = update.Message.Chat.ID
+	return chatID
+}
+
+func SetState(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger, userID int64, state models.UserState, ctx context.Context) {
+	if err := BotContext.UserRepository.CacheRepository.SetWithTTL(int(userID), state, 0, ctx); err != nil {
+		logger.Error("Failed to retrieve data from cache: %w ", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
+	}
 }

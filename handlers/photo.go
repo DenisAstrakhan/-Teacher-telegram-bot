@@ -13,19 +13,19 @@ import (
 
 func SavePhoto(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger) {
 	// Получаем фото максимального размера
-	logger.Info(fmt.Sprintf("User ID - %v: sent the photo ", update.Message.From.ID))
+	logger.Sugar().Infof("User %d: sent the photo ", update.Message.From.ID)
 	photo := update.Message.Photo[len(update.Message.Photo)-1]
 
 	// Получаем информацию о файле
 	file, err := bot.GetFile(tgbotapi.FileConfig{FileID: photo.FileID})
 	if err != nil {
-		logger.Warn(fmt.Sprintf("User ID - %v: Error getting file: %v", update.Message.From.ID, err))
+		logger.Sugar().Warnf("User %d: Error getting file: %w", update.Message.From.ID, err)
 		return
 	}
 
 	// Создаем папку "out", если её не существует
 	if err := os.MkdirAll("out", 0755); err != nil {
-		logger.Warn(fmt.Sprintf("User ID - %v: Error creating directory: %v", update.Message.From.ID, err))
+		logger.Sugar().Warnf("User %d: Error creating directory: %w", update.Message.From.ID, err)
 		return
 	}
 
@@ -42,7 +42,7 @@ func SavePhoto(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger)
 	// Скачиваем файл через HTTP запрос
 	resp, err := http.Get(downloadURL)
 	if err != nil {
-		logger.Warn(fmt.Sprintf("User ID - %v: Error downloading file: %v", update.Message.From.ID, err))
+		logger.Sugar().Warnf("User %d: Error downloading file: %w", update.Message.From.ID, err)
 		return
 	}
 	defer resp.Body.Close()
@@ -50,7 +50,7 @@ func SavePhoto(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger)
 	// Создаем файл на диске
 	outFile, err := os.Create(fileName)
 	if err != nil {
-		logger.Warn(fmt.Sprintf("User ID - %v: Error creating file: %v", update.Message.From.ID, err))
+		logger.Sugar().Warnf("User %d: Error creating file: %w", update.Message.From.ID, err)
 		return
 	}
 	defer outFile.Close()
@@ -58,15 +58,15 @@ func SavePhoto(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger)
 	// Копируем содержимое
 	_, err = io.Copy(outFile, resp.Body)
 	if err != nil {
-		logger.Warn(fmt.Sprintf("User ID - %v: Error saving file: %v", update.Message.From.ID, err))
+		logger.Sugar().Warnf("User %d: Error saving file: %w", update.Message.From.ID, err)
 		return
 	}
 
 	// Подтверждаем пользователю
-	logger.Info(fmt.Sprintf("User ID - %v: Save photo: %s", update.Message.From.ID, fileName))
+	logger.Sugar().Infof("User %d: Save photo: %s", update.Message.From.ID, fileName)
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "✅ Изображение сохранено!")
 	if _, err := bot.Send(msg); err != nil {
-		logger.Error(fmt.Sprintf("Error sending message: %v", err))
+		logger.Error("Error sending message: %w", zap.Error(err))
 	}
 
 }

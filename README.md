@@ -4,61 +4,89 @@
 [![Telegram Bot API](https://img.shields.io/badge/telegram--bot--api-v5-blue?logo=telegram)](https://github.com/go-telegram-bot-api/telegram-bot-api)
 [![GigaChat Go](https://img.shields.io/badge/gigachat--go-v1.0.2-purple)](https://github.com/tigusigalpa/gigachat-go)
 
-A bot for conducting English language tests using **GigaChat** from Sber. The user selects their knowledge level and topic, after which GigaChat dynamically generates a test of 10 questions. Two testing formats are supported: classic (multiple choice with 4 options) and interactive (free conversation with AI). If GigaChat returns an invalid test, the bot automatically returns to the main menu.
+A bot for conducting English language tests using GigaChat from Sber. Users select their knowledge level and topic, after which GigaChat dynamically generates a test of 10 questions. Two testing formats are supported: classic (multiple choice with 4 options) and interactive (free conversation with AI). If GigaChat returns an invalid test, the bot automatically returns to the main menu.
+🚀 Key Features
 
+    User roles — support for two roles: student and teacher.
+
+    Taking tests — students take tests in one of two formats (classic or interactive).
+
+    Saving results — all test results are stored in the database.
+
+    Teacher result management — teachers can view, edit, and delete their students' test results.
+
+    Topic selection — topics are predefined in the bot's menu.
+
+    Manual subject/topic setup — users can specify custom values (validated against the subject list).
+
+    Media saving — all user images and voice messages are saved to the out/ folder.
+
+    Configuration without recompilation:
+
+        Allowed subjects list (SubjectList).
+
+        Profanity dictionary (russian-bad-words).
+
+        GigaChat prompts (RunStepByStepTest, RunInteractiveTest).
+
+        Logging level (via environment variable).
+
+    Profanity filtering — automatic checking of user messages.
+
+    Logging — structured logging with rotation (supports multiple levels).
+
+🗄️ Data Storage
+
+    Database — configurable via environment variables. Three database systems are supported:
+
+        SQLite
+
+        MySQL
+
+        PostgreSQL
+
+    Caching — implemented using Redis.
 ---
 
-## 🚀 Key Features
-
-- **Topic selection** — topics are predefined in the bot's menu.
-- **Two testing modes**:
-  - *Classic* — question + 4 answer options.
-  - *Interactive* — dialogue with GigaChat as a tutor.
-- **Manual subject/topic setup** — users can specify custom values (validated against the subject list).
-- **Media saving** — all user images and voice messages are saved to the `out/` folder.
-- **Configuration without recompilation**:
-  - Allowed subjects list (`SubjectList`).
-  - Profanity dictionary (`russian-bad-words`).
-  - GigaChat prompts (`RunStepByStepTest`, `RunInteractiveTest`).
-  - Logging level (via environment variable).
-- **Profanity filtering** — automatic checking of user messages.
-- **Logging** — structured logging with rotation (supports multiple levels).
+🛠 Technologies and Libraries
+Library	Version	Purpose
+go-telegram-bot-api/v5	v5.5.1	Telegram Bot API interaction
+gigachat-go	v1.0.2	GigaChat API client (Sber)
+go-sensitive-word	v1.1.0	Profanity filtering
+zap	v1.28.0	High-performance structured logging
+godotenv	v1.5.1	Load environment variables from .env file
+go-redis/redis/v8	v8.11.5	Redis client for caching
+go-sql-driver/mysql	v1.10.0	MySQL driver
+pgx/v5	v5.10.0	PostgreSQL driver
+go-sqlite3	v1.14.48	SQLite driver
 
 ---
-
-## 🛠 Technologies and Libraries
-
-| Library | Version | Purpose |
-|---------|---------|---------|
-| [go-telegram-bot-api/v5](https://github.com/go-telegram-bot-api/telegram-bot-api) | v5.5.1 | Telegram Bot API interaction |
-| [gigachat-go](https://github.com/tigusigalpa/gigachat-go) | v1.0.2 | GigaChat API client (Sber) |
-| [go-sensitive-word](https://github.com/LuYongwang/go-sensitive-word) | v1.1.0 | Profanity filtering |
-| [zap](https://go.uber.org/zap) | v1.28.0 | High-performance structured logging |
-| [godotenv](https://github.com/joho/godotenv) | v1.5.1 | Load environment variables from `.env` file |
-
----
-
 ## 📁 Project Structure
+
+```
 TeacherBot/
 ├── dictionaries/
-│ ├── SubjectList # Allowed subjects (one per line)
-│ └── russian-bad-words # Profanity dictionary
-├── gigachat/ # GigaChat client and test logic
-├── handlers/ # User action handlers
-├── Image/ # Menu images
-├── logger/ # Configurable logger (zap)
-├── logs/ # Log files directory
-├── menu/ # Bot menu with inline keyboard
-├── models/ # Models and constructors
-├── out/ # Saved images and voice messages
+│   ├── SubjectList          # Allowed subjects (one per line)
+│   └── russian-bad-words    # Profanity dictionary
+├── domain/                  # Contains data models, repository interface, and application context
+├── gigachat/                # GigaChat client and test logic
+├── handlers/                # User action handlers
+├── Image/                   # Menu images
+├── logger/                  # Configurable logger (zap)
+├── logs/                    # Log files directory
+├── menu/                    # Bot menu with inline keyboard
+├── models/                  # Models and constructors
+├── out/                     # Saved images and voice messages
 ├── prompts/
-│ ├── RunStepByStepTest # Prompt for classic test
-│ └── RunInteractiveTest # Prompt for interactive mode
-├── .env # Environment variables (not committed)
-├── .env.example # Example environment variables
+│   ├── RunStepByStepTest    # Prompt for classic test
+│   └── RunInteractiveTest   # Prompt for interactive mode
+├── repository               # Implementation of specific databases and cache
+├── .env                     # Environment variables (not committed)
+├── .env.example             # Example environment variables
 ├── go.mod
 ├── go.sum
-└── main.go # Entry point
+└── main.go                  # Entry point
+```
 
 text
 
@@ -82,13 +110,22 @@ BOT_TOKEN=your_telegram_bot_token
 GIGACHAT_CLIENT_ID=your_client_id
 GIGACHAT_CLIENT_SECRET=your_client_secret
 LOG_LEVEL=debug   # debug, info, warn, error
+REPOSITORY_TYPE= #sqlite, mysql, postgres
+POSTGRES_USER=your_user_name
+POSTGRES_PASSWORD=your_password
+POSTGRES_DB=your_database
+MYSQL_ROOT_PASSWORD=your_root_pasword
+MYSQL_DATABASE=your_database
+MYSQL_USER=your_user_name
+MYSQL_PASSWORD=your_password
+CACHE_REPOSITORY_TYPE= #redis
+MAX_MEMORY=redis_memory_limit
 3. Configuration Without Recompilation
 File	Purpose
 dictionaries/SubjectList	Allowed subjects (one per line)
 dictionaries/russian-bad-words	Profanity dictionary (used by go-sensitive-word)
 prompts/RunStepByStepTest	Prompt for classic test (10 questions with options)
 prompts/RunInteractiveTest	Prompt for interactive mode (free dialogue)
-LOG_LEVEL variable	Logging level
 4. Launch
 bash
 go mod tidy
@@ -99,26 +136,53 @@ bash
 go build -o teacher-bot.exe main.go
 ./teacher-bot.exe
 🧠 How It Works
-Main Flow
-User sends /start command → bot shows main menu (graphics from Image/ folder).
+1. Authorization and Role Detection
 
-User selects knowledge level and topic.
+    User sends the /start command.
 
-Bot sends a request to GigaChat (via gigachat-go library) with the corresponding prompt.
+    The program checks if the user exists in the cache (Redis):
 
-If GigaChat returns an invalid test (not 10 questions, incorrect format, etc.):
+        If found in cache → the program determines their status (teacher or student) and displays the corresponding menu.
 
-Bot sends an error message
+    If the user is not in cache → the program checks if the user exists in the database:
 
-Returns to the start page
+        If found in the database → the program determines their status and displays the corresponding menu.
 
-Event is logged via zap
+        If not found in cache or database → the bot asks: "Who are you?"
 
-If test is valid:
+2. New User Registration
+User Choice	Action
+"Teacher"	The program saves the user to the database as a teacher.
+"Student"	The program asks the student to select a teacher from the database. After selection, the student is saved with a reference to the chosen teacher.
+3. Student Functionality
 
-Classic mode: sequential questions with 4 options
+    The bot displays the main menu (graphics from the Image/ folder).
 
-Interactive mode: user freely communicates with AI tutor
+    The user selects their knowledge level and topic.
+
+    The bot sends a request to GigaChat (via the gigachat-go library) with the corresponding prompt.
+
+    If GigaChat returns an invalid test (not 10 questions, incorrect format, etc.):
+
+        The bot sends an error message.
+
+        Returns to the start page.
+
+        The event is logged via zap.
+
+    If the test is valid:
+
+        Classic mode: sequential questions with 4 answer options.
+
+        Interactive mode: the user freely communicates with the AI tutor.
+
+4. Teacher Functionality
+Step	Action
+1	The bot displays a list of students linked to this teacher.
+2	When a student is selected → the bot shows a list of completed tests for that student.
+3	When a specific test is selected → the bot displays a management menu with the following options:
+	• Delete test
+	• Edit test result (score/grade)
 
 Media Saving
 All user-sent images and voice messages are saved to the out/ folder with the following naming format:
@@ -149,8 +213,6 @@ warn	Non-critical errors (retries, timeouts)
 error	Critical errors (GigaChat unavailable, file issues)
 🔧 Planned Improvements (TODO)
 User authentication
-
-Save users and test results to a database
 
 User statistics (number of tests completed, progress)
 
@@ -185,177 +247,242 @@ When editing dictionaries/ or prompts/, no bot restart is required.
 
 📖 Русская версия / Russian Version
 TeacherBot — Telegram бот для тестирования по английскому языку с GigaChat
+
 https://img.shields.io/badge/Go-1.25.4-00ADD8?style=flat&logo=go
 https://img.shields.io/badge/telegram--bot--api-v5-blue?logo=telegram
 https://img.shields.io/badge/gigachat--go-v1.0.2-purple
 
-Бот для проведения тестов по английскому языку с использованием GigaChat от Сбера. Пользователь выбирает уровень знаний и тему, после чего GigaChat динамически генерирует тест из 10 вопросов. Поддерживаются два формата тестирования: классический (с выбором варианта) и интерактивный (свободная беседа с ИИ). При некорректном ответе от GigaChat бот автоматически возвращается в главное меню.
-
+Бот для проведения тестов по английскому языку с использованием GigaChat от Сбера. Пользователь выбирает уровень знаний и тему, после чего GigaChat динамически генерирует тест из 10 вопросов. Поддерживаются два формата тестирования: классический (множественный выбор с 4 вариантами) и интерактивный (свободная беседа с ИИ). Если GigaChat возвращает некорректный тест, бот автоматически возвращается в главное меню.
 🚀 Основные возможности
-Выбор темы — темы предопределены в меню бота.
 
-Два режима тестирования:
+    Роли пользователей — поддержка двух ролей: ученик и учитель.
 
-Классический — вопрос + 4 варианта ответа.
+    Прохождение тестов — ученики проходят тесты в одном из двух форматов (классический или интерактивный).
 
-Интерактивный — диалог с GigaChat в роли репетитора.
+    Сохранение результатов — все результаты тестов сохраняются в базу данных.
 
-Настройка предмета и темы вручную — можно задать свой вариант (с валидацией по списку предметов).
+    Управление результатами для учителя — учитель может просматривать, редактировать и удалять результаты тестов своих учеников.
 
-Сохранение медиа — все отправленные пользователем изображения и голосовые сообщения сохраняются в папку out/.
+    Выбор темы — темы предопределены в меню бота.
 
-Гибкая конфигурация без перекомпиляции:
+    Ручная настройка предмета/темы — пользователи могут указывать произвольные значения (проверяются по списку предметов).
 
-Список допустимых предметов (SubjectList).
+    Сохранение медиафайлов — все изображения и голосовые сообщения пользователей сохраняются в папку out/.
 
-Словарь ненормативной лексики (russian-bad-words).
+    Настройка без перекомпиляции:
 
-Промпты для GigaChat (RunStepByStepTest, RunInteractiveTest).
+        Список разрешённых предметов (SubjectList).
 
-Уровень логирования (через переменную окружения).
+        Словарь нецензурной лексики (russian-bad-words).
 
-Фильтрация ненормативной лексики — автоматическая проверка сообщений пользователя.
+        Промпты GigaChat (RunStepByStepTest, RunInteractiveTest).
 
-Логирование — структурированное логирование с ротацией (поддержка разных уровней).
+        Уровень логирования (через переменную окружения).
+
+    Фильтрация нецензурной лексики — автоматическая проверка сообщений пользователей.
+
+    Логирование — структурированное логирование с ротацией (поддерживает несколько уровней).
+
+🗄️ Хранение данных
+
+    База данных — настраивается через переменные окружения. Поддерживаются три СУБД:
+
+        SQLite
+
+        MySQL
+
+        PostgreSQL
+
+    Кэширование — осуществляется с использованием Redis.
 
 🛠 Технологии и библиотеки
 Библиотека	Версия	Назначение
 go-telegram-bot-api/v5	v5.5.1	Взаимодействие с Telegram Bot API
 gigachat-go	v1.0.2	Клиент для GigaChat API (Сбер)
-go-sensitive-word	v1.1.0	Фильтрация ненормативной лексики
+go-sensitive-word	v1.1.0	Фильтрация нецензурной лексики
 zap	v1.28.0	Высокопроизводительное структурированное логирование
-godotenv	v1.5.1	Загрузка переменных окружения из .env файла
-
+godotenv	v1.5.1	Загрузка переменных окружения из файла .env
+go-redis/redis/v8	v8.11.5	Клиент Redis для кэширования
+go-sql-driver/mysql	v1.10.0	Драйвер для MySQL
+pgx/v5	v5.10.0	Драйвер для PostgreSQL
+go-sqlite3	v1.14.48	Драйвер для SQLite
 📁 Структура проекта
+text
 
 TeacherBot/
 ├── dictionaries/
-│   ├── SubjectList              # Список допустимых предметов (построчно)
-│   └── russian-bad-words        # Словарь ненормативной лексики
-├── gigachat/                    # Клиент для GigaChat и основная логика тестов
-├── handlers/                    # Обработчики действий пользователя
-├── Image/                       # Изображения для меню бота
-├── logger/                      # Настраиваемый логер (zap)
-├── logs/                        # Директория с лог-файлами
-├── menu/                        # Меню бота с инлайн-клавиатурой
-├── models/                      # Модели и их конструкторы
-├── out/                         # Сохранённые изображения и голосовые сообщения
+│   ├── SubjectList          # Список разрешённых предметов (по одному на строку)
+│   └── russian-bad-words    # Словарь нецензурной лексики
+├── domain/                  # Содержит модели данных, интерфейс репозитория и контекст приложения
+├── gigachat/                # Клиент GigaChat и логика тестов
+├── handlers/                # Обработчики действий пользователя
+├── Image/                   # Изображения для меню
+├── logger/                  # Настраиваемый логер (zap)
+├── logs/                    # Директория с лог-файлами
+├── menu/                    # Меню бота с инлайн-клавиатурой
+├── models/                  # Модели и их конструкторы
+├── out/                     # Сохранённые изображения и голосовые сообщения
 ├── prompts/
-│   ├── RunStepByStepTest        # Промпт для классического теста
-│   └── RunInteractiveTest       # Промпт для интерактивного режима
-├── .env                         # Переменные окружения (не коммитится)
-├── .env.example                 # Пример переменных окружения
+│   ├── RunStepByStepTest    # Промпт для классического теста
+│   └── RunInteractiveTest   # Промпт для интерактивного режима
+├── repository               # Реализация конкретных БД и кэша
+├── .env                     # Переменные окружения (не коммитится)
+├── .env.example             # Пример переменных окружения
 ├── go.mod
 ├── go.sum
-└── main.go                      # Точка входа
+└── main.go                  # Точка входа
+
 ⚙️ Настройка и запуск
 1. Получение авторизационных данных
 Сервис	Действие
 Telegram	Зарегистрируйтесь и получите BOT_TOKEN у @BotFather
 Sber AI (GigaChat)	Зарегистрируйтесь в личном кабинете Sber AI. Создайте проект и получите Client ID и Client Secret
 2. Переменные окружения
-Создайте файл .env в корне проекта:
 
+Создайте файл .env в корне проекта:
 env
+
 BOT_TOKEN=your_telegram_bot_token
 GIGACHAT_CLIENT_ID=your_client_id
 GIGACHAT_CLIENT_SECRET=your_client_secret
 LOG_LEVEL=debug   # debug, info, warn, error
+REPOSITORY_TYPE=  # sqlite, mysql, postgres
+POSTGRES_USER=your_user_name
+POSTGRES_PASSWORD=your_password
+POSTGRES_DB=your_database
+MYSQL_ROOT_PASSWORD=your_root_password
+MYSQL_DATABASE=your_database
+MYSQL_USER=your_user_name
+MYSQL_PASSWORD=your_password
+CACHE_REPOSITORY_TYPE=  # redis
+MAX_MEMORY=redis_memory_limit
+
 3. Настройка без перекомпиляции
 Файл	Назначение
-dictionaries/SubjectList	Список разрешённых предметов (по одному на строку)
-dictionaries/russian-bad-words	Словарь ненормативной лексики (используется go-sensitive-word)
+dictionaries/SubjectList	Разрешённые предметы (по одному на строку)
+dictionaries/russian-bad-words	Словарь нецензурной лексики (используется go-sensitive-word)
 prompts/RunStepByStepTest	Промпт для классического теста (10 вопросов с вариантами)
 prompts/RunInteractiveTest	Промпт для интерактивного режима (свободный диалог)
-Переменная LOG_LEVEL	Уровень логирования
 4. Запуск
 bash
+
 go mod tidy
 go run main.go
-Или сборка бинарного файла:
 
+Или сборка бинарного файла:
 bash
+
 go build -o teacher-bot.exe main.go
 ./teacher-bot.exe
+
 🧠 Как это работает
-Основной поток
-Пользователь отправляет команду /start → бот показывает главное меню (графика из папки Image/).
+1. Авторизация и определение роли
 
-Пользователь выбирает уровень знаний и тему.
+    Пользователь отправляет команду /start.
 
-Бот отправляет запрос к GigaChat (через библиотеку gigachat-go) с соответствующим промптом.
+    Программа проверяет наличие пользователя в кэше (Redis):
 
-Если GigaChat вернул некорректный тест (не 10 вопросов, неправильный формат и т.д.):
+        Если найден в кэше → определяется статус (учитель или ученик) и выдаётся соответствующее меню.
 
-Бот отправляет сообщение об ошибке
+    Если пользователя нет в кэше → программа проверяет наличие пользователя в базе данных:
 
-Возвращается на стартовую страницу
+        Если найден в БД → определяется статус и выдаётся соответствующее меню.
 
-Событие логируется через zap
+        Если не найден ни в кэше, ни в БД → бот задаёт вопрос: "Кто ты?"
 
-Если тест корректен:
+2. Регистрация нового пользователя
+Выбор пользователя	Действие
+"Учитель"	Программа вносит пользователя в БД как учителя
+"Ученик"	Программа предлагает выбрать учителя из списка (из БД). После выбора — сохраняет ученика с привязкой к учителю
+3. Функционал ученика
 
-Классический режим: последовательная выдача вопросов с 4 вариантами
+    Бот показывает главное меню (графика из папки Image/).
 
-Интерактивный режим: пользователь свободно общается с ИИ-учителем
+    Пользователь выбирает уровень знаний и тему.
 
-Сохранение медиа
-Все отправленные пользователем изображения и голосовые сообщения сохраняются в папку out/ с форматом имени:
+    Бот отправляет запрос в GigaChat (через библиотеку gigachat-go) с соответствующим промптом.
 
+    Если GigaChat возвращает некорректный тест (не 10 вопросов, неверный формат и т.д.):
+
+        Бот отправляет сообщение об ошибке
+
+        Возвращается на стартовую страницу
+
+        Событие логируется через zap
+
+    Если тест валидный:
+
+        Классический режим: последовательные вопросы с 4 вариантами ответов
+
+        Интерактивный режим: пользователь свободно общается с ИИ-репетитором
+
+4. Функционал учителя
+Шаг	Действие
+1	Бот отправляет список учеников, привязанных к этому учителю
+2	При выборе ученика → показывает список пройденных тестов этого ученика
+3	При выборе конкретного теста → выдаёт меню управления с возможностями:
+	• Удалить тест
+	• Изменить результат (оценку/баллы)
+Сохранение медиафайлов
+
+Все изображения и голосовые сообщения, отправленные пользователем, сохраняются в папку out/ со следующим форматом имени:
 Тип	Формат имени
 Изображения	photo_<userID>_<timestamp>.jpg
 Голосовые	voice_<userID>_<timestamp>.ogg
-Фильтрация ненормативной лексики
-Используется библиотека go-sensitive-word
+Фильтрация нецензурной лексики
 
-Словарь загружается из dictionaries/russian-bad-words
+    Используется библиотека go-sensitive-word
 
-Перед отправкой любого сообщения в GigaChat проверяется фильтром
+    Словарь загружается из dictionaries/russian-bad-words
 
-При обнаружении мата → бот отправляет предупреждение, запрос в GigaChat не уходит
+    Каждое сообщение, отправляемое в GigaChat, проверяется фильтром
+
+    Если обнаружен мат → бот отправляет предупреждение, запрос к GigaChat блокируется
 
 Логирование (zap)
-Файл логов: logs/2006-01-02T15.04.05.000000.log
 
-Структурированный формат — удобно для парсинга и анализа
+    Файл логов: logs/2006-01-02T15.04.05.000000.log
 
-Уровни через LOG_LEVEL:
+    Структурированный формат — удобен для парсинга и анализа
+
+    Уровни через LOG_LEVEL:
 
 Уровень	Описание
 debug	Полная отладочная информация (включая сырые ответы GigaChat)
 info	Основные события (запуск, выбор темы, завершение теста)
-warn	Некритичные ошибки (повторные запросы, таймауты)
-error	Критические ошибки (недоступность GigaChat, проблемы с файлами)
-🔧 Возможные улучшения (TODO)
-Авторизация пользователей
+warn	Некритичные ошибки (повторы, таймауты)
+error	Критические ошибки (GigaChat недоступен, проблемы с файлами)
+🔧 Планируемые улучшения (TODO)
 
-Сохранение пользователей и результатов тестирования в базе данных
+    Аутентификация пользователей
 
-Статистика пользователя (количество пройденных тестов, прогресс)
+    Статистика пользователей (количество пройденных тестов, прогресс)
 
-Экспорт результатов в PDF
+    Экспорт результатов в PDF
 
-Автоматическая очистка папки out/ от старых файлов
+    Автоматическая очистка старых файлов в папке out/
 
-Поддержка Webhook вместо Long Polling (Если бот обзаведётся миллионом пользователей)
+    Поддержка Webhook вместо Long Polling (если бот наберёт миллион пользователей)
 
 ❓ Частые вопросы
-Q: Как добавить новое нецензурное слово?
-A: Добавьте слово в dictionaries/russian-bad-words (по одному на строку). Бот использует go-sensitive-word для фильтрации.
 
-Q: Бот не отвечает или GigaChat недоступен?
-A: Проверьте LOG_LEVEL=debug в .env и посмотрите файл logs/bot.log. Если проблема повторяется — бот вернёт пользователя в главное меню.
+В: Как добавить новый предмет?
+О: Добавьте строку в dictionaries/SubjectList. Перезапуск бота не требуется — изменения подхватываются автоматически.
 
-Q: Где лежат загруженные пользователями файлы?
-A: В папке out/. Рекомендуется периодически чистить её или настроить автоматическое удаление старых файлов.
+В: Как добавить новое нецензурное слово?
+О: Добавьте слово в dictionaries/russian-bad-words (по одному на строку). Бот использует go-sensitive-word для фильтрации.
 
-Q: Можно ли изменить количество вопросов?
-A: Да — отредактируйте промпт в prompts/RunStepByStepTest, заменив "10 вопросов" на нужное число. Бот автоматически адаптируется.
+В: Бот не отвечает или GigaChat недоступен?
+О: Установите LOG_LEVEL=debug в .env и проверьте логи в logs/. Если проблема сохраняется, бот вернёт пользователя в главное меню.
 
+В: Где хранятся файлы, загруженные пользователями?
+О: В папке out/. Рекомендуется периодически очищать её или настроить автоматическое удаление старых файлов.
 
+В: Можно ли изменить количество вопросов?
+О: Да — отредактируйте промпт в prompts/RunStepByStepTest, заменив "10 вопросов" на нужное количество. Бот автоматически адаптируется.
 📄 Лицензия
-MIT
 
+MIT
 🤝 Обратная связь
-По вопросам доработки и багам — создавайте Issue в репозитории проекта.
-При редактировании dictionaries/ или prompts/ перезапуск бота не требуется.
+
+По вопросам улучшений и ошибок — создавайте Issue в репозитории проекта.

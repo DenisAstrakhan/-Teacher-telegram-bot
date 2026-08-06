@@ -1,16 +1,22 @@
 package main
 
 import (
+	filter "TeacherBot/dictionaries"
+	"TeacherBot/domain"
 	gchat "TeacherBot/gigachat"
 	"TeacherBot/handlers"
 	"TeacherBot/logger"
-	"TeacherBot/models"
+	"TeacherBot/repository"
+	"context"
 	"fmt"
 	"log"
 	"os"
 
+	_ "github.com/go-sql-driver/mysql"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
+	_ "github.com/mattn/go-sqlite3"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -24,10 +30,25 @@ func main() {
 		panic(err)
 	}
 	defer logFileClose()
+	//Создаём контекст для работы с репозиторием
+	RepositoryContext, RepositoryCancel := context.WithCancel(context.Background())
+	defer RepositoryCancel()
+	//Создаём подключение к базе данных
+	UserRepository, err := repository.NewUserRepository(RepositoryContext)
+	if err != nil {
+		fmt.Println("Failed to connect to the database: %w", err)
+	}
+	defer UserRepository.Close()
 
 	// Создаём Giga chat клиента
 	GigaChat := gchat.StartBot()
-	BotContext := models.NewBotContext(GigaChat, logger)
+	//Инициализируем фильтер матерных слов
+	filter, err := filter.InitFilter(logger)
+	if err != nil {
+		logger.Error("Failed to create profanity filter: %v", zap.Error(err))
+	}
+	//Создаём контекст бота
+	BotContext := domain.NewBotContext(UserRepository, GigaChat, filter, logger)
 	// Инициализируем бот
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("BOT_TOKEN"))
 	if err != nil {
@@ -45,7 +66,7 @@ func main() {
 	for update := range updates {
 		// Обрабатываем callback от инлайн кнопок
 		if update.CallbackQuery != nil {
-			handlers.HandleCallback(logger, bot, update, BotContext)
+			handlers.HandleCallback(logger, bot, update, BotContext, RepositoryContext)
 			continue
 		}
 		// Проверяем получения изображения
@@ -60,7 +81,7 @@ func main() {
 		}
 		// Проверяем обычные сообщения
 		if update.Message != nil {
-			handlers.HandleMessage(logger, bot, update, BotContext)
+			handlers.HandleMessage(logger, bot, update, BotContext, RepositoryContext)
 			continue
 		}
 

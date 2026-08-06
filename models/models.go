@@ -1,90 +1,69 @@
 package models
 
 import (
-	"bufio"
-	"fmt"
-	"os"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/tigusigalpa/gigachat-go"
-	"go.uber.org/zap"
 )
 
 // Состояние пользователя
 type UserState struct {
-	CurrentMenu    string              // текущее меню
-	Data           map[string]string   // дополнительные данные
-	MessageID      int                 //ID сообщения для изменения
-	Conversation   []gigachat.Message  // переписка с чатом
-	UserAnswers    []string            //ответы пользователя
-	CorrectAnswers []string            //правельные ответы
-	AllQuestions   []string            //тест 10 вопросов
-	UserLastPress  map[int64]time.Time //Хранилище времени последнего нажатия
+	Teacher        *bool              `json:"teacher,omitempty"`         //является ли пользователь учителем
+	CurrentMenu    string             `json:"current_menu,omitempty"`    //текущее меню
+	Data           map[string]string  `json:"data,omitempty"`            //дополнительные данные
+	MessageID      int                `json:"message_id,omitempty"`      //ID сообщения для изменения
+	Conversation   []gigachat.Message `json:"conversation,omitempty"`    // переписка с чатом
+	UserAnswers    []string           `json:"user_answers,omitempty"`    //ответы пользователя
+	CorrectAnswers []string           `json:"correct_answers,omitempty"` //правельные ответы
+	AllQuestions   []string           `json:"all_questions,omitempty"`   //тест 10 вопросов
+	UserLastPress  time.Time          `json:"user_last_press"`           //Времени последнего нажатия
+	TeacherLists   []Teacher          `json:"teacher_lists,omitempty"`   //хранилище списка учителей
+	StudentList    []User             `json:"student_list,omitempty"`    //Хранилище списка учеников
+	TestList       []Test             `json:"test_list,omitempty"`       //Хранилище списка тестов
+	Student        User               `json:"student"`                   //Выбранный студент
+	TestID         int                `json:"test_id,omitempty"`         //Id выбранного теста
 }
 
-func NewUserState() UserState {
-	return UserState{
-		CurrentMenu:   "main",
-		Data:          make(map[string]string),
-		UserLastPress: make(map[int64]time.Time),
-		MessageID:     0,
-	}
+type Message struct {
+	Role    string `json:"role,omitempty"`
+	Content string `json:"content,omitempty"`
 }
 
-type BotContext struct {
-	GigaChat   *gigachat.Client    // клиент подключения к Giga Chat
-	UserStates map[int64]UserState //хранилище состояний пользователей
-	Subjects   map[string]struct{} //хранилеще предметов для формирования теста
-	Mtx        sync.RWMutex        // для потокобезопасного доступа к UserStates и Giga Chat
+type User struct {
+	Telegram_id   int    `json:"telegram_id,omitempty"` //Изменить на TelegramID
+	Telegram_name string `json:"telegram_name,omitempty"`
+	Full_name     string `json:"full_name,omitempty"` //Изменить на FullName
 }
 
-func NewBotContext(client *gigachat.Client, logger *zap.Logger) *BotContext {
-	subjects, err := newSubjectList(logger)
-	if err != nil {
-		subjects = make(map[string]struct{})
-	}
-
-	return &BotContext{
-		GigaChat:   client,
-		UserStates: make(map[int64]UserState),
-		Subjects:   subjects,
-		Mtx:        sync.RWMutex{},
-	}
+type UserResult struct {
+	Id          int        `json:"id,omitempty"`
+	Result      int        `json:"result,omitempty"`
+	Time_finish *time.Time `json:"time_finish,omitempty"` // изменить на TimeFinish
 }
-func (bc *BotContext) SetUserState(userID int64, state UserState) {
-	bc.Mtx.Lock()
-	defer bc.Mtx.Unlock()
 
-	bc.UserStates[userID] = state
+type Test struct {
+	Id      int    `json:"id,omitempty"`
+	Subject string `json:"subject,omitempty"`
+	Level   string `json:"level,omitempty"`
+	Topic   string `json:"topic,omitempty"`
+	Test    string `json:"test,omitempty"`
+	Result  int    `json:"result,omitempty"`
 }
-func (bc *BotContext) GetUserStattes() map[int64]UserState {
-	bc.Mtx.RLock()
-	defer bc.Mtx.RUnlock()
-	return bc.UserStates
-}
-func newSubjectList(logger *zap.Logger) (map[string]struct{}, error) {
-	file, err := os.Open("dictionaries/SubjectList.txt")
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to open SubjectList.txt file: %v", err))
-		return nil, err
-	}
-	defer file.Close()
-	subjectSet := make(map[string]struct{})
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		// Удаляем лишние пробелы и приводим к нижнему регистру
-		subject := strings.TrimSpace(strings.ToLower(scanner.Text()))
-		if subject != "" {
-			subjectSet[subject] = struct{}{}
-		}
-	}
-	//Проверяем небыло ли ошибки при сканировании
-	if err := scanner.Err(); err != nil {
-		logger.Error(fmt.Sprintf("Failed to read SubjectList.txt file: %v", err))
-		return nil, err
-	}
 
-	return subjectSet, nil
+type Teacher struct {
+	Telegram_id  int    `json:"telegram_id,omitempty"`  //Изменить на TelegramID
+	Teacher_name string `json:"teacher_name,omitempty"` //Изменить на TeacherName
+}
+
+func NewUserState(teacher *bool) UserState {
+	state := UserState{
+		Teacher:     teacher,
+		CurrentMenu: "main",
+		Data:        make(map[string]string),
+		MessageID:   0,
+	}
+	state.Data["subject"] = ""
+	state.Data["Topic"] = ""
+	state.Data["level"] = ""
+	return state
 }
