@@ -16,6 +16,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	_ "github.com/mattn/go-sqlite3"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -35,7 +36,7 @@ func main() {
 	//Создаём подключение к базе данных
 	UserRepository, err := repository.NewUserRepository(RepositoryContext)
 	if err != nil {
-		fmt.Println("Ошибка при подключении к базе данных: %w", err)
+		fmt.Println("Failed to connect to the database: %w", err)
 	}
 	defer UserRepository.Close()
 
@@ -44,7 +45,7 @@ func main() {
 	//Инициализируем фильтер матерных слов
 	filter, err := filter.InitFilter(logger)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Ошибка при создании фильтра нецензурных слов: %v", err))
+		logger.Error("Failed to create profanity filter: %v", zap.Error(err))
 	}
 	//Создаём контекст бота
 	BotContext := domain.NewBotContext(UserRepository, GigaChat, filter, logger)
@@ -65,7 +66,7 @@ func main() {
 	for update := range updates {
 		// Обрабатываем callback от инлайн кнопок
 		if update.CallbackQuery != nil {
-			handlers.HandleCallback(logger, bot, update, BotContext)
+			handlers.HandleCallback(logger, bot, update, BotContext, RepositoryContext)
 			continue
 		}
 		// Проверяем получения изображения
@@ -80,7 +81,7 @@ func main() {
 		}
 		// Проверяем обычные сообщения
 		if update.Message != nil {
-			handlers.HandleMessage(logger, bot, update, BotContext)
+			handlers.HandleMessage(logger, bot, update, BotContext, RepositoryContext)
 			continue
 		}
 

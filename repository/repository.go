@@ -27,7 +27,7 @@ func NewUserRepository(ctx context.Context) (domain.UserRepository, error) {
 		return domain.UserRepository{}, errors.New("Could not determine database type. REPOSITORY_TYPE environment variable is not set or has invalid value")
 	}
 	if err != nil {
-		return domain.UserRepository{}, fmt.Errorf("Не удалось создать репозиторий для хранения данных! Ошибка: %w", err)
+		return domain.UserRepository{}, fmt.Errorf("Failed to create repository for data storage: %w", err)
 	}
 	switch os.Getenv("CACHE_REPOSITORY_TYPE") {
 	case "redis":
@@ -36,7 +36,7 @@ func NewUserRepository(ctx context.Context) (domain.UserRepository, error) {
 		return domain.UserRepository{}, errors.New("Could not determine database type. CACHE_REPOSITORY_TYPE environment variable is not set or has invalid value")
 	}
 	if err != nil {
-		return domain.UserRepository{}, fmt.Errorf("Не удалось создать репозиторий для работы с cache! Ошибка: %w", err)
+		return domain.UserRepository{}, fmt.Errorf("Failed to create cache repository: %w", err)
 	}
 	return userRepository, nil
 }
@@ -55,7 +55,6 @@ func newPostgresRepository(ctx context.Context) (domain.UserDataRepository, erro
 	}
 	return &postgresRepository{
 		conn: conn,
-		ctx:  ctx,
 	}, nil
 }
 func newMysqlRepository(ctx context.Context) (domain.UserDataRepository, error) {
@@ -72,7 +71,6 @@ func newMysqlRepository(ctx context.Context) (domain.UserDataRepository, error) 
 	}
 	return &mysqlRepository{
 		conn: conn,
-		ctx:  ctx,
 	}, nil
 }
 
@@ -96,7 +94,6 @@ func newSQLiteRepository(ctx context.Context) (domain.UserDataRepository, error)
 
 	return &SQLiteRepository{
 		conn: conn,
-		ctx:  ctx,
 	}, nil
 }
 
@@ -115,10 +112,9 @@ func newRedisRepository(ctx context.Context) (redisRepository, error) {
 	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if err := client.Ping(queryCtx).Err(); err != nil {
-		return redisRepository{}, fmt.Errorf("Не удалось подключиться к Redis: %v", err)
+		return redisRepository{}, fmt.Errorf("Failed to connect to Redis: %w", err)
 	}
 	return redisRepository{
-		ctx:    ctx,
 		client: client,
 	}, nil
 }

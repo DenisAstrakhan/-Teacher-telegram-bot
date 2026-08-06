@@ -16,11 +16,11 @@ type UserState struct {
 	UserAnswers    []string           `json:"user_answers,omitempty"`    //ответы пользователя
 	CorrectAnswers []string           `json:"correct_answers,omitempty"` //правельные ответы
 	AllQuestions   []string           `json:"all_questions,omitempty"`   //тест 10 вопросов
-	UserLastPress  time.Time          `json:"user_last_press,omitempty"` //Времени последнего нажатия    ??????????????????????????????????
+	UserLastPress  time.Time          `json:"user_last_press"`           //Времени последнего нажатия
 	TeacherLists   []Teacher          `json:"teacher_lists,omitempty"`   //хранилище списка учителей
 	StudentList    []User             `json:"student_list,omitempty"`    //Хранилище списка учеников
 	TestList       []Test             `json:"test_list,omitempty"`       //Хранилище списка тестов
-	Student        User               `json:"student,omitempty"`         //Выбранный студент            ?????????????????????????????????
+	Student        User               `json:"student"`                   //Выбранный студент
 	TestID         int                `json:"test_id,omitempty"`         //Id выбранного теста
 }
 

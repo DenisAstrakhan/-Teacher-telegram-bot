@@ -14,7 +14,7 @@ import (
 func NewLogger(loglevel string) (*zap.Logger, func() error, error) {
 	lvl := zap.NewAtomicLevel()
 	if err := lvl.UnmarshalText([]byte(loglevel)); err != nil {
-		return nil, nil, fmt.Errorf("unmarshal log level: %w", err)
+		return nil, nil, fmt.Errorf("Unmarshal log level: %w", err)
 	}
 	if err := os.MkdirAll("logs", 0755); err != nil {
 		return nil, nil, fmt.Errorf("mkdir log folder: %w", err)
@@ -23,7 +23,7 @@ func NewLogger(loglevel string) (*zap.Logger, func() error, error) {
 	logFilePath := filepath.Join("logs", fmt.Sprintf("%s.log", timestamp))
 	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return nil, nil, fmt.Errorf("open log file: %w", err)
+		return nil, nil, fmt.Errorf("Open log file: %w", err)
 	}
 	cfg := zap.NewDevelopmentEncoderConfig()
 	cfg.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02T15.04.05.000000")

@@ -12,15 +12,14 @@ import (
 
 type postgresRepository struct {
 	conn *pgx.Conn
-	ctx  context.Context
 }
 
-func (r *postgresRepository) InsertTecher(telegram_id int, telegram_name *string, teacher_name string) error {
+func (r *postgresRepository) InsertTecher(telegram_id int, telegram_name *string, teacher_name string, ctx context.Context) error {
 	SQLQuery := `
 INSERT INTO bot.teacher (telegram_id, telegram_name, teacher_name)
 VALUES ($1,$2,$3);
 `
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := r.conn.Exec(queryCtx, SQLQuery, telegram_id, telegram_name, teacher_name)
 	return err
@@ -30,12 +29,13 @@ func (r *postgresRepository) InsertUser(
 	telegram_id int,
 	telegram_name *string,
 	full_name string,
-	teacher_ID int) error {
+	teacher_ID int,
+	ctx context.Context) error {
 	SQLQuery := `
 INSERT INTO bot.users (telegram_id, telegram_name, full_name, teacher_ID)
 VALUES ($1,$2,$3,$4);
 `
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := r.conn.Exec(queryCtx, SQLQuery, telegram_id, telegram_name, full_name, teacher_ID)
 	return err
@@ -48,12 +48,13 @@ func (r *postgresRepository) InsertTests(
 	test string,
 	result int,
 	time_finish time.Time,
-	user_id int) error {
+	user_id int,
+	ctx context.Context) error {
 	SQLQuery := `
 INSERT INTO bot.tests (subject,level, topic, test,result,time_finish,user_id)
 VALUES ($1,$2,$3,$4,$5,$6,$7);
 `
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := r.conn.Exec(queryCtx, SQLQuery, subject, level, topic, test, result, time_finish, user_id)
 	return err
@@ -64,30 +65,31 @@ func (r *postgresRepository) UpdateRow(
 	column string,
 	value any,
 	indexColumn string,
-	index int) error {
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	index int,
+	ctx context.Context) error {
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	SQLQuery := fmt.Sprintf("UPDATE %s SET %s = $1 WHERE %s=$2", "bot."+table, column, indexColumn)
 	_, err := r.conn.Exec(queryCtx, SQLQuery, value, index)
 	return err
 }
 
-func (r *postgresRepository) DeleteRow(table string, column string, index int) error {
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+func (r *postgresRepository) DeleteRow(table string, column string, index int, ctx context.Context) error {
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	SQLQuery := fmt.Sprintf("DELETE FROM %s WHERE %s=$1", "bot."+table, column)
 	_, err := r.conn.Exec(queryCtx, SQLQuery, index)
 	return err
 }
 
-func (r *postgresRepository) GetStudentsByTeacher(teacher_ID int, limit int) ([]models.User, error) {
+func (r *postgresRepository) GetStudentsByTeacher(teacher_ID int, limit int, ctx context.Context) ([]models.User, error) {
 	SQLQuery := `
 SELECT telegram_id,telegram_name ,full_name
 FROM bot.users
 WHERE teacher_ID = $1
 LIMIT $2
 `
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	rows, err := r.conn.Query(queryCtx, SQLQuery, teacher_ID, limit)
 	if err != nil {
@@ -107,14 +109,14 @@ LIMIT $2
 	return students, rows.Err()
 }
 
-func (r *postgresRepository) GetResultByUser(user_id int, limit int) ([]models.UserResult, error) {
+func (r *postgresRepository) GetResultByUser(user_id int, limit int, ctx context.Context) ([]models.UserResult, error) {
 	SQLQuery := `
 SELECT id,result,time_finish
 FROM bot.tests
 WHERE user_id = $1
 ORDER BY id ASC LIMIT $2
 `
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	rows, err := r.conn.Query(queryCtx, SQLQuery, user_id, limit)
 	if err != nil {
@@ -134,13 +136,13 @@ ORDER BY id ASC LIMIT $2
 	return results, rows.Err()
 }
 
-func (r *postgresRepository) GetTestByUser(user_id int) ([]models.Test, error) {
+func (r *postgresRepository) GetTestByUser(user_id int, ctx context.Context) ([]models.Test, error) {
 	SQLQuery := `
 SELECT id,subject,level,topic,test,result
 FROM bot.tests
 WHERE user_id=$1
 `
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	rows, err := r.conn.Query(queryCtx, SQLQuery, user_id)
 	if err != nil {
@@ -162,13 +164,13 @@ WHERE user_id=$1
 	}
 	return testList, rows.Err()
 }
-func (r *postgresRepository) InitializationRow(table_name string, colum_name string, value any) error {
+func (r *postgresRepository) InitializationRow(table_name string, colum_name string, value any, ctx context.Context) error {
 	SQLQuery := fmt.Sprintf(`
 SELECT EXISTS(
 SELECT * FROM %s 
 WHERE %s = $1);
 `, "bot."+table_name, colum_name)
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	var exists bool
 	err := r.conn.QueryRow(queryCtx, SQLQuery, value).Scan(&exists)
@@ -182,12 +184,12 @@ WHERE %s = $1);
 
 	return nil
 }
-func (r *postgresRepository) GetTeacherLists() ([]models.Teacher, error) {
+func (r *postgresRepository) GetTeacherLists(ctx context.Context) ([]models.Teacher, error) {
 	SQLQuery := `
 SELECT telegram_id,teacher_name
 FROM bot.teacher
 `
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	rows, err := r.conn.Query(queryCtx, SQLQuery)
 	if err != nil {
@@ -207,7 +209,9 @@ FROM bot.teacher
 }
 
 func (r *postgresRepository) Close() error {
-	if err := r.conn.Close(r.ctx); err != nil {
+	queryCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := r.conn.Close(queryCtx); err != nil {
 		return err
 	}
 	return nil

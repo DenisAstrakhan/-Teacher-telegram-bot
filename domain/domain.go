@@ -13,12 +13,11 @@ import (
 )
 
 type BotContext struct {
-	UserRepository UserRepository   //Подключение к базе данных
-	GigaChat       *gigachat.Client // клиент подключения к Giga Chat
-	/*UserStates     map[int64]models.UserState //хранилище состояний пользователей*/
-	Subjects map[string]struct{} //хранилеще предметов для формирования теста
-	Filter   *sensitive.Manager  //Фильтер для фильтрации мата
-	Mtx      sync.RWMutex        // для потокобезопасного доступа к UserStates и Giga Chat
+	UserRepository UserRepository      //Подключение к базе данных
+	GigaChat       *gigachat.Client    // клиент подключения к Giga Chat
+	Subjects       map[string]struct{} //хранилеще предметов для формирования теста
+	Filter         *sensitive.Manager  //Фильтер для фильтрации мата
+	Mtx            sync.RWMutex        // для потокобезопасного доступа к UserStates и Giga Chat
 }
 
 func NewBotContext(userRepository UserRepository, client *gigachat.Client, filter *sensitive.Manager, logger *zap.Logger) *BotContext {
@@ -30,10 +29,9 @@ func NewBotContext(userRepository UserRepository, client *gigachat.Client, filte
 	return &BotContext{
 		UserRepository: userRepository,
 		GigaChat:       client,
-		//UserStates:     make(map[int64]models.UserState),
-		Subjects: subjects,
-		Filter:   filter,
-		Mtx:      sync.RWMutex{},
+		Subjects:       subjects,
+		Filter:         filter,
+		Mtx:            sync.RWMutex{},
 	}
 }
 

@@ -10,15 +10,14 @@ import (
 
 type mysqlRepository struct {
 	conn *sql.DB
-	ctx  context.Context
 }
 
-func (r *mysqlRepository) InsertTecher(telegram_id int, telegram_name *string, teacher_name string) error {
+func (r *mysqlRepository) InsertTecher(telegram_id int, telegram_name *string, teacher_name string, ctx context.Context) error {
 	SQLQuery := `
 INSERT INTO teacher (telegram_id, telegram_name, teacher_name)
 VALUES (?,?,?);
 `
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := r.conn.ExecContext(queryCtx, SQLQuery, telegram_id, telegram_name, teacher_name)
 	return err
@@ -28,12 +27,13 @@ func (r *mysqlRepository) InsertUser(
 	telegram_id int,
 	telegram_name *string,
 	full_name string,
-	teacher_ID int) error {
+	teacher_ID int,
+	ctx context.Context) error {
 	SQLQuery := `
 INSERT INTO users (telegram_id, telegram_name, full_name, teacher_ID)
 VALUES (?,?,?,?);
 `
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := r.conn.ExecContext(queryCtx, SQLQuery, telegram_id, telegram_name, full_name, teacher_ID)
 	return err
@@ -46,12 +46,13 @@ func (r *mysqlRepository) InsertTests(
 	test string,
 	result int,
 	time_finish time.Time,
-	user_id int) error {
+	user_id int,
+	ctx context.Context) error {
 	SQLQuery := `
 INSERT INTO tests (subject,level, topic, test,result,time_finish,user_id)
 VALUES (?,?,?,?,?,?,?);
 `
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := r.conn.ExecContext(queryCtx, SQLQuery, subject, level, topic, test, result, time_finish, user_id)
 	return err
@@ -62,30 +63,31 @@ func (r *mysqlRepository) UpdateRow(
 	column string,
 	value any,
 	indexColumn string,
-	index int) error {
+	index int,
+	ctx context.Context) error {
 	SQLQuery := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s=?", table, column, indexColumn)
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := r.conn.ExecContext(queryCtx, SQLQuery, value, index)
 	return err
 }
 
-func (r *mysqlRepository) DeleteRow(table string, column string, index int) error {
+func (r *mysqlRepository) DeleteRow(table string, column string, index int, ctx context.Context) error {
 	SQLQuery := fmt.Sprintf("DELETE FROM %s WHERE %s=?", table, column)
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := r.conn.ExecContext(queryCtx, SQLQuery, index)
 	return err
 }
 
-func (r *mysqlRepository) GetStudentsByTeacher(teacher_ID int, limit int) ([]models.User, error) {
+func (r *mysqlRepository) GetStudentsByTeacher(teacher_ID int, limit int, ctx context.Context) ([]models.User, error) {
 	SQLQuery := `
 SELECT telegram_id,telegram_name ,full_name
 FROM users
 WHERE teacher_ID = ?
 LIMIT ?
 `
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	rows, err := r.conn.QueryContext(queryCtx, SQLQuery, teacher_ID, limit)
 	if err != nil {
@@ -105,14 +107,14 @@ LIMIT ?
 	return students, rows.Err()
 }
 
-func (r *mysqlRepository) GetResultByUser(user_id int, limit int) ([]models.UserResult, error) {
+func (r *mysqlRepository) GetResultByUser(user_id int, limit int, ctx context.Context) ([]models.UserResult, error) {
 	SQLQuery := `
 SELECT id,result,time_finish
 FROM tests
 WHERE user_id = ?
 ORDER BY id ASC LIMIT ?
 `
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	rows, err := r.conn.QueryContext(queryCtx, SQLQuery, user_id, limit)
 	if err != nil {
@@ -132,13 +134,13 @@ ORDER BY id ASC LIMIT ?
 	return results, rows.Err()
 }
 
-func (r *mysqlRepository) GetTestByUser(user_id int) ([]models.Test, error) {
+func (r *mysqlRepository) GetTestByUser(user_id int, ctx context.Context) ([]models.Test, error) {
 	SQLQuery := `
 SELECT id,subject,level,topic,test,result
 FROM tests
 WHERE user_id=?
 `
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	rows, err := r.conn.QueryContext(queryCtx, SQLQuery, user_id)
 	if err != nil {
@@ -160,13 +162,13 @@ WHERE user_id=?
 	}
 	return testList, rows.Err()
 }
-func (r *mysqlRepository) InitializationRow(table_name string, colum_name string, value any) error {
+func (r *mysqlRepository) InitializationRow(table_name string, colum_name string, value any, ctx context.Context) error {
 	SQLQuery := fmt.Sprintf(`
 SELECT EXISTS(
 SELECT * FROM %s 
 WHERE %s = ?);
 `, table_name, colum_name)
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	var exists bool
 	err := r.conn.QueryRowContext(queryCtx, SQLQuery, value).Scan(&exists)
@@ -180,12 +182,12 @@ WHERE %s = ?);
 
 	return nil
 }
-func (r *mysqlRepository) GetTeacherLists() ([]models.Teacher, error) {
+func (r *mysqlRepository) GetTeacherLists(ctx context.Context) ([]models.Teacher, error) {
 	SQLQuery := `
 SELECT telegram_id,teacher_name
 FROM teacher
 `
-	queryCtx, cancel := context.WithTimeout(r.ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	rows, err := r.conn.QueryContext(queryCtx, SQLQuery)
 	if err != nil {
