@@ -9,24 +9,39 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgx/v5"
 )
 
 func NewUserRepository(ctx context.Context) (domain.UserRepository, error) {
+	var userRepository domain.UserRepository
+	var err error
 	switch os.Getenv("REPOSITORY_TYPE") {
 	case "postgres":
-		return newPostgresRepository(ctx)
+		userRepository.DataRepository, err = newPostgresRepository(ctx)
 	case "mysql":
-		return newMysqlRepository(ctx)
+		userRepository.DataRepository, err = newMysqlRepository(ctx)
 	case "sqlite":
-		return newSQLiteRepository(ctx)
+		userRepository.DataRepository, err = newSQLiteRepository(ctx)
 	default:
-		return nil, errors.New("Could not determine database type. REPOSITORY_TYPE environment variable is not set or has invalid value")
+		return domain.UserRepository{}, errors.New("Could not determine database type. REPOSITORY_TYPE environment variable is not set or has invalid value")
 	}
-
+	if err != nil {
+		return domain.UserRepository{}, fmt.Errorf("Не удалось создать репозиторий для хранения данных! Ошибка: %w", err)
+	}
+	switch os.Getenv("CACHE_REPOSITORY_TYPE") {
+	case "redis":
+		userRepository.CacheRepository, err = newRedisRepository(ctx)
+	default:
+		return domain.UserRepository{}, errors.New("Could not determine database type. CACHE_REPOSITORY_TYPE environment variable is not set or has invalid value")
+	}
+	if err != nil {
+		return domain.UserRepository{}, fmt.Errorf("Не удалось создать репозиторий для работы с cache! Ошибка: %w", err)
+	}
+	return userRepository, nil
 }
 
-func newPostgresRepository(ctx context.Context) (domain.UserRepository, error) {
+func newPostgresRepository(ctx context.Context) (domain.UserDataRepository, error) {
 	pgConnString := fmt.Sprintf("postgres://%s:%s@localhost:5432/%s?sslmode=disable", os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"), os.Getenv("POSTGRES_DB"))
 	//pgConnString := fmt.Sprintf("postgres://%s:%s@bot-postgres:5432/%s?sslmode=disable", os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"), os.Getenv("POSTGRES_DB"))
 	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -43,7 +58,7 @@ func newPostgresRepository(ctx context.Context) (domain.UserRepository, error) {
 		ctx:  ctx,
 	}, nil
 }
-func newMysqlRepository(ctx context.Context) (domain.UserRepository, error) {
+func newMysqlRepository(ctx context.Context) (domain.UserDataRepository, error) {
 	ConnString := fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s?parseTime=true&loc=Local", os.Getenv("MYSQL_USER"), os.Getenv("MYSQL_PASSWORD"), os.Getenv("MYSQL_DATABASE"))
 	//ConnString := fmt.Sprintf("%s:%s@tcp(bot-mysql:3306)/%s?parseTime=true&loc=Local", os.Getenv("MYSQL_USER"), os.Getenv("MYSQL_PASSWORD"), os.Getenv("MYSQL_DATABASE"))
 	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -61,7 +76,7 @@ func newMysqlRepository(ctx context.Context) (domain.UserRepository, error) {
 	}, nil
 }
 
-func newSQLiteRepository(ctx context.Context) (*SQLiteRepository, error) {
+func newSQLiteRepository(ctx context.Context) (domain.UserDataRepository, error) {
 	conn, err := sql.Open("sqlite3", "./out/sqlitedata/database.db?_foreign_keys=on&cache=shared")
 	//conn, err := sql.Open("sqlite3","/data/database.db?_foreign_keys=on&cache=shared")
 	if err != nil {
@@ -82,5 +97,28 @@ func newSQLiteRepository(ctx context.Context) (*SQLiteRepository, error) {
 	return &SQLiteRepository{
 		conn: conn,
 		ctx:  ctx,
+	}, nil
+}
+
+func newRedisRepository(ctx context.Context) (redisRepository, error) {
+	addr := "localhost:6379"
+	opt := &redis.Options{
+		Addr:        addr,
+		Password:    "",
+		DB:          0,
+		PoolSize:    10,
+		PoolTimeout: 5 * time.Second,
+	}
+
+	client := redis.NewClient(opt)
+
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err := client.Ping(queryCtx).Err(); err != nil {
+		return redisRepository{}, fmt.Errorf("Не удалось подключиться к Redis: %v", err)
+	}
+	return redisRepository{
+		ctx:    ctx,
+		client: client,
 	}, nil
 }

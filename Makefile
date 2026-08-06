@@ -163,6 +163,12 @@ migrate-sqlite-down:
 	else \
 		echo "  ⚠️  Нет миграций для отката"; \
 	fi
+
+redis-up:
+	docker compose up -d redis
+
+redis-down:
+	docker compose down redis
 run-service:
 	go run main.go
 
@@ -181,3 +187,6 @@ vpn-up:
 
 vpn-down:
 	adguardvpn-cli disconnect
+
+redis-clear:
+	sudo rm -f ./out/redisdata/dump.rdb

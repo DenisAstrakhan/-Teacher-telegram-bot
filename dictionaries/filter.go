@@ -1,8 +1,6 @@
 package filter
 
 import (
-	"fmt"
-
 	sensitive "github.com/LuYongwang/go-sensitive-word"
 	"go.uber.org/zap"
 )
@@ -14,13 +12,13 @@ func InitFilter(logger *zap.Logger) (*sensitive.Manager, error) {
 		sensitive.FilterOption{Type: sensitive.FilterDfa},
 	)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Error creating filter: %v", err))
+		logger.Error("Error creating filter: %w", zap.Error(err))
 		return &sensitive.Manager{}, err
 	}
 	// Загрузка словаря Русских ругательств из файла
 	err = filter.LoadDictPath("dictionaries/russian-bad-words.txt")
 	if err != nil {
-		logger.Error(fmt.Sprintf("Error loading dictionary: %v", err))
+		logger.Error("Error loading dictionary: %w", zap.Error(err))
 		return &sensitive.Manager{}, err
 	}
 	return filter, nil

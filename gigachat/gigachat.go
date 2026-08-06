@@ -38,19 +38,23 @@ func StartBot() *gigachat.Client {
 }
 func StartTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger) {
 	userID := getUserID(update)
-	userStates := BotContext.GetUserStattes()
-	state := userStates[userID]
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(userID))
+	if err != nil {
+		logger.Error("Ошибка при получении данных из cache: %w", zap.Error(err))
+		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		return
+	}
 	switch state.Data["test"] {
 	case "interactive":
-		logger.Info(fmt.Sprintf("User ID - %v: Start interactive test Subject: \"%s\", Topic:  \"%s\", Level  \"%s\"", userID, state.Data["subject"], state.Data["Topic"], state.Data["level"]))
+		logger.Sugar().Infof("User ID - %v: Start interactive test Subject: \"%s\", Topic:  \"%s\", Level  \"%s\"", userID, state.Data["subject"], state.Data["Topic"], state.Data["level"])
 		InteractiveTest(bot, update, BotContext, logger)
 		return
 	case "simple":
-		logger.Info(fmt.Sprintf("User ID - %v: Start simple test Subject: \"%s\", Topic:  \"%s\", Level  \"%s\"", userID, state.Data["subject"], state.Data["Topic"], state.Data["level"]))
+		logger.Sugar().Infof("User ID - %v: Start simple test Subject: \"%s\", Topic:  \"%s\", Level  \"%s\"", userID, state.Data["subject"], state.Data["Topic"], state.Data["level"])
 		SimpleTest(bot, update, BotContext, logger)
 		return
 	default:
-		logger.Warn(fmt.Sprintf("User ID - %v: Failed to start tes", userID))
+		logger.Sugar().Warnf("User ID - %v: Failed to start tes", userID)
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 	}
 
@@ -59,21 +63,26 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *d
 
 	client := BotContext.GigaChat
 	userID := getUserID(update)
-	state := BotContext.UserStates[userID]
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(userID))
+	if err != nil {
+		logger.Error("Ошибка при получении данных из cache: %w", zap.Error(err))
+		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		return
+	}
 
 	//Проверяем счёт
 	if _, exists := state.Data["score"]; !exists {
 		//Пользователь только начал тест
 		msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
 		if _, err := bot.Request(msgToDelete); err != nil {
-			logger.Error(fmt.Sprintf("Error sending message: %v", err))
+			logger.Error("Error sending message: %v", zap.Error(err))
 		}
-		logger.Info(fmt.Sprintf("User ID - %v: Is at the beginning of the test", userID))
+		logger.Sugar().Infof("User ID - %v: Is at the beginning of the test", userID)
 		state.Data["score"] = "0"
 		// Создаём "учителя" с памятью о ходе теста
 		promptfile, err := getPrompt("RunInteractiveTes.txt")
 		if err != nil {
-			logger.Error(fmt.Sprintf("User ID - %v: Failed to read prompt file Error: %v", userID, err))
+			logger.Sugar().Errorf("User ID - %v: Failed to read prompt file Error: %v", userID, err)
 			menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 			return
 		}
@@ -84,19 +93,19 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *d
 		// Получаем вопрос от учителя
 		response, err := client.Chat(conversation)
 		if err != nil {
-			logger.Error(fmt.Sprintf("User ID - %v: Failed to get question: Error: %v", userID, err))
+			logger.Sugar().Errorf("User ID - %v: Failed to get question: Error: %v", userID, err)
 			menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 		}
 		question := gigachat.ExtractContent(response)
-		logger.Info(fmt.Sprintf("User ID - %v: Teacher: %s", userID, question))
+		logger.Sugar().Infof("User ID - %v: Teacher: %s", userID, question)
 		conversation = append(conversation, gigachat.Message{Role: "assistant", Content: question})
 		// Отправляем вопрос пользоватпелю
 		msg := tgbotapi.NewMessage(userID, question)
 		if _, err := bot.Send(msg); err != nil {
-			logger.Error(fmt.Sprintf("Error sending message: %v", err))
+			logger.Error("Error sending message: %w", zap.Error(err))
 		}
 		state.Conversation = conversation
-		BotContext.SetUserState(userID, state)
+		menu.SetState(bot, update, BotContext, logger, userID, state)
 		return
 	}
 
@@ -104,31 +113,31 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *d
 	// Получаем вопрос от учителя
 	response, err := client.Chat(state.Conversation)
 	if err != nil {
-		logger.Error(fmt.Sprintf("User ID - %v: Failed to get question: Error: %v", userID, err))
+		logger.Sugar().Errorf("User ID - %v: Failed to get question: Error: %v", userID, err)
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 	}
 	question := gigachat.ExtractContent(response)
-	logger.Info(fmt.Sprintf("User ID - %v: Teacher: %s", userID, question))
+	logger.Sugar().Infof("User ID - %v: Teacher: %s", userID, question)
 	scoreII, end := parseScoreDigit(question)
 	if end {
 		// Тест окончен
 		response := getLetterGrade(scoreII)
-		logger.Info(fmt.Sprintf("Test finish! User ID - %v result: %s", userID, response))
+		logger.Sugar().Infof("Test finish! User ID - %v result: %s", userID, response)
 		jsonData, err := json.Marshal(state.Conversation)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Не удолось перевести переписку пользователяв json: %v", err))
-			finishInteractiveTest(BotContext, state, userID)
+			logger.Error("Не удолось перевести переписку пользователяв json: %w", zap.Error(err))
+			finishInteractiveTest(bot, update, BotContext, logger, state, userID)
 			menu.ReturnStartMenu(bot, update, BotContext, logger, response)
 			return
 		}
-		if err := BotContext.UserRepository.InsertTests(state.Data["subject"], state.Data["level"], state.Data["Topic"], string(jsonData), scoreII, time.Now(), int(userID)); err != nil {
-			logger.Error(fmt.Sprintf("Не удалось добавить тест в базу данных: %v", err))
-			finishInteractiveTest(BotContext, state, userID)
+		if err := BotContext.UserRepository.DataRepository.InsertTests(state.Data["subject"], state.Data["level"], state.Data["Topic"], string(jsonData), scoreII, time.Now(), int(userID)); err != nil {
+			logger.Error("Не удалось добавить тест в базу данных: %w", zap.Error(err))
+			finishInteractiveTest(bot, update, BotContext, logger, state, userID)
 			menu.ReturnStartMenu(bot, update, BotContext, logger, response)
 			return
 		}
-		logger.Info(fmt.Sprintf("Пользователь ID - %d,добавил тест в базу данных", userID))
-		finishInteractiveTest(BotContext, state, userID)
+		logger.Sugar().Infof("Пользователь ID - %d,добавил тест в базу данных", userID)
+		finishInteractiveTest(bot, update, BotContext, logger, state, userID)
 		menu.ReturnStartMenu(bot, update, BotContext, logger, response)
 		return
 	}
@@ -136,15 +145,19 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *d
 		gigachat.Message{Role: "assistant", Content: question})
 	msg := tgbotapi.NewMessage(userID, question)
 	if _, err := bot.Send(msg); err != nil {
-		logger.Error(fmt.Sprintf("Error sending message: %v", err))
+		logger.Error("Error sending message: %w", zap.Error(err))
 	}
-	BotContext.SetUserState(userID, state)
+	menu.SetState(bot, update, BotContext, logger, userID, state)
 }
 func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger) {
 	client := BotContext.GigaChat
 	userID := getUserID(update)
-	userStates := BotContext.GetUserStattes()
-	state := userStates[userID]
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(userID))
+	if err != nil {
+		logger.Error("Ошибка при получении данных из cache: %w", zap.Error(err))
+		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		return
+	}
 	//Проверяем наличие теста
 	if len(state.AllQuestions) == 10 {
 		len := len(state.UserAnswers)
@@ -153,41 +166,41 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain
 			// Тест завершился
 			checkscore, err := checkingAnswer(state.UserAnswers, state.CorrectAnswers)
 			if err != nil {
-				logger.Error(fmt.Sprintf("User ID - %v: Failed test: Error: %v", userID, err))
+				logger.Sugar().Errorf("User ID - %v: Failed test: Error: %w", userID, err)
 				menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 				return
 			}
 			response := getLetterGrade(checkscore)
 			jsonData, err := json.Marshal(state.AllQuestions)
 			if err != nil {
-				logger.Error(fmt.Sprintf("Не удолось перевести список вопросов в json: %v", err))
+				logger.Error("Не удолось перевести список вопросов в json: %w", zap.Error(err))
 				return
 			}
-			if err := BotContext.UserRepository.InsertTests(state.Data["subject"], state.Data["level"], state.Data["Topic"], string(jsonData), checkscore, time.Now(), int(userID)); err != nil {
-				logger.Error(fmt.Sprintf("Не удалось добавить тест в базу данных: %v", err))
+			if err := BotContext.UserRepository.DataRepository.InsertTests(state.Data["subject"], state.Data["level"], state.Data["Topic"], string(jsonData), checkscore, time.Now(), int(userID)); err != nil {
+				logger.Error("Не удалось добавить тест в базу данных: %w", zap.Error(err))
 				return
 			}
-			logger.Info(fmt.Sprintf("Пользователь ID - %d,добавил тест в базу данных", userID))
-			logger.Info(fmt.Sprintf("Test finish! User ID - %v result: %s", userID, response))
+			logger.Sugar().Infof("Пользователь ID - %d,добавил тест в базу данных", userID)
+			logger.Sugar().Infof("Test finish! User ID - %v result: %s", userID, response)
 			menu.ReturnStartMenu(bot, update, BotContext, logger, response)
 			return
 		}
 		question, correctAnswer, err := parseQuestion(state.AllQuestions[len])
 		if err != nil {
-			logger.Error(fmt.Sprintf("User ID - %v: Failed test: Error: %v", userID, err))
+			logger.Sugar().Errorf("User ID - %v: Failed test: Error: %v", userID, err)
 			menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 		}
 		state.CorrectAnswers = append(state.CorrectAnswers, correctAnswer)
-		BotContext.SetUserState(userID, state)
+		menu.SetState(bot, update, BotContext, logger, userID, state)
 		menu.ShowTestMenu(bot, update, question, logger, BotContext)
 		return
 	}
 	//Пользователь только начал тест
-	logger.Info(fmt.Sprintf("User ID - %v: Is at the beginning of the test", userID))
+	logger.Sugar().Infof("User ID - %v: Is at the beginning of the test", userID)
 	//Получаем тест
 	promptfile, err := getPrompt("RunOneRequestTest.txt")
 	if err != nil {
-		logger.Error(fmt.Sprintf("User ID - %v: Failed to read prompt file Error: %v", userID, err))
+		logger.Sugar().Errorf("User ID - %v: Failed to read prompt file Error: %v", userID, err)
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 		return
 	}
@@ -197,50 +210,53 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain
 	}
 	response, err := client.Chat(messages)
 	if err != nil {
-		logger.Error(fmt.Sprintf("User ID - %v: Failed to get question: Error: %v", userID, err))
+		logger.Sugar().Errorf("User ID - %v: Failed to get question: Error: %v", userID, err)
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 		return
 	}
 	allquestions := splitByQuestionNumber(response.Choices[0].Message.Content)
 	if len(allquestions) != 10 {
-		logger.Error(fmt.Sprintf("User ID - %v: Failed to get 10 test questions", userID))
+		logger.Sugar().Errorf("User ID - %v: Failed to get 10 test questions", userID)
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 		return
 	}
 	state.AllQuestions = allquestions
 	question, correctAnswer, err := parseQuestion(state.AllQuestions[0])
 	if err != nil {
-		logger.Error(fmt.Sprintf("User ID - %v: Failed test: Error: %v", userID, err))
+		logger.Sugar().Errorf("User ID - %v: Failed test: Error: %v", userID, err)
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
 		return
 	}
 	state.CorrectAnswers = append(state.CorrectAnswers, correctAnswer)
 	state.CurrentMenu = ""
-	BotContext.SetUserState(userID, state)
+	menu.SetState(bot, update, BotContext, logger, userID, state)
 	menu.ShowTestMenu(bot, update, question, logger, BotContext)
 }
 func SelectSubject(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger) {
 	userID := getUserID(update)
-	states := BotContext.GetUserStattes()
-	state := states[userID]
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(userID))
+	if err != nil {
+		logger.Error("Ошибка при получении данных из cache: %w", zap.Error(err))
+		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		return
+	}
 	state.Data["subject"] = ""
 	if state.MessageID != 0 {
-		logger.Debug(fmt.Sprintf("Attempting to delete message - UserID: %d, MessageID: %d", userID, state.MessageID))
+		logger.Sugar().Debugf("Attempting to delete message - UserID: %d, MessageID: %d", userID, state.MessageID)
 		msgToDelete := tgbotapi.NewDeleteMessage(userID, state.MessageID)
 		if _, err := bot.Request(msgToDelete); err != nil {
-			logger.Warn(fmt.Sprintf("Error sending message: %v", err))
+			logger.Sugar().Warnf("Error sending message: %v", err)
 		}
 	}
-	BotContext.SetUserState(userID, state)
+	menu.SetState(bot, update, BotContext, logger, userID, state)
 	msg := tgbotapi.NewMessage(userID, "Напишите школьный предмет для которого нужно создать тест")
 	sentMsg, err := bot.Send(msg)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to send subject request: %v", err))
+		logger.Error("Failed to send subject request: %v", zap.Error(err))
 		return
 	}
 	state.MessageID = sentMsg.MessageID
-	BotContext.SetUserState(userID, state)
-
+	menu.SetState(bot, update, BotContext, logger, userID, state)
 }
 func parseScoreDigit(input string) (int, bool) {
 	re := regexp.MustCompile(`SCORE\s*(\d+)`)
@@ -287,7 +303,7 @@ func splitByQuestionNumber(text string) []string {
 	questions := make([]string, 0, len(indices))
 
 	// Проходим по каждому найденному индексу
-	for i := 0; i < len(indices); i++ {
+	for i := 0; i < len(indices); i++ { //????????????????????????????????????????????????????
 		// Начало текущего вопроса
 		start := indices[i][0]
 
@@ -344,8 +360,8 @@ func getLetterGrade(percentage int) string {
 		return "F (Нужно повторить материал)"
 	}
 }
-func finishInteractiveTest(BotContext *domain.BotContext, state models.UserState, userID int64) {
+func finishInteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger, state models.UserState, userID int64) {
 	delete(state.Data, "score")
 	state.MessageID = 0
-	BotContext.SetUserState(userID, state)
+	menu.SetState(bot, update, BotContext, logger, userID, state)
 }

@@ -129,7 +129,7 @@ ORDER BY id ASC LIMIT $2
 		if err := rows.Scan(&id, &result, &time_finish); err != nil {
 			return nil, fmt.Errorf("scan error: %w", err)
 		}
-		results = append(results, models.UserResult{Id: id, Result: result, Time_finish: time_finish})
+		results = append(results, models.UserResult{Id: id, Result: result, Time_finish: &time_finish})
 	}
 	return results, rows.Err()
 }
@@ -207,8 +207,8 @@ FROM bot.teacher
 }
 
 func (r *postgresRepository) Close() error {
-	if r.conn != nil {
-		return r.conn.Close(context.Background())
+	if err := r.conn.Close(r.ctx); err != nil {
+		return err
 	}
 	return nil
 }

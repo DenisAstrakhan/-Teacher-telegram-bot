@@ -28,8 +28,12 @@ func ShowStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Log
 		),
 	)
 	chatID := getUserID(update)
-	userStates := BotContext.GetUserStattes()
-	state := userStates[chatID]
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(chatID))
+	if err != nil {
+		logger.Error("Ошибка при получении данных из cache: %w", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		return
+	}
 	if state.MessageID == 0 {
 		sendMenu(bot, update, Caption, keyboard, logger, BotContext, "Image/start.jpg")
 	} else {
@@ -199,7 +203,7 @@ func ShowWhoAreYouMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap
 	_, err := bot.Send(photoMsg)
 	if err != nil {
 		//Не удалось отправить сообщение
-		logger.Error(fmt.Sprintf("Error send photo: %v", err))
+		logger.Error("Error send photo: %w", zap.Error(err))
 		return
 	}
 }
@@ -207,9 +211,9 @@ func ShowWhoAreYouMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap
 func ShowTeacherMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext) {
 	teacherID := getUserID(update)
 	//Получаем список учеников
-	usersList, err := BotContext.UserRepository.GetStudentsByTeacher(int(teacherID), 100)
+	usersList, err := BotContext.UserRepository.DataRepository.GetStudentsByTeacher(int(teacherID), 100)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Неудолось получить список учеников: %v", err))
+		logger.Error("Неудолось получить список учеников: %w", zap.Error(err))
 		return
 	}
 	//проверяем не пустой л список
@@ -217,11 +221,15 @@ func ShowTeacherMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.L
 		logger.Info(fmt.Sprintf("У учителя ID - %d нет учеников", teacherID))
 		return
 	}
-	UserState := BotContext.GetUserStattes()
-	state := UserState[teacherID]
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(teacherID))
+	if err != nil {
+		logger.Error("Ошибка при получении данных из cache: %w", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		return
+	}
 	state.StudentList = usersList
 	state.CurrentMenu = "teacher"
-	BotContext.SetUserState(teacherID, state)
+	SetState(bot, update, BotContext, logger, teacherID, state)
 	// Формируем текст с нумерованным списком
 	var sb strings.Builder
 	sb.WriteString("📋 *Выберите ученика:*\n\n")
@@ -248,11 +256,15 @@ func ShowTeacherMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.L
 }
 func ShowTecherList(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext) models.UserState {
 	userID := getUserID(update)
-	userStates := BotContext.GetUserStattes()
-	state := userStates[userID]
-	teacherLists, err := BotContext.UserRepository.GetTeacherLists()
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(userID))
 	if err != nil {
-		logger.Error(fmt.Sprintf("Не удалось получит полный список учетелей. Ошибка: %v", err))
+		logger.Error("Ошибка при получении данных из cache: %w", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		return state
+	}
+	teacherLists, err := BotContext.UserRepository.DataRepository.GetTeacherLists()
+	if err != nil {
+		logger.Error("Не удалось получит полный список учетелей. Ошибка: %w", zap.Error(err))
 		return state
 	}
 	state.TeacherLists = teacherLists
@@ -276,27 +288,31 @@ func ShowTecherList(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Lo
 	}
 	msg := tgbotapi.NewMessage(userID, lists)
 	if _, err := bot.Send(msg); err != nil {
-		logger.Error(fmt.Sprintf("Error sending message: %v", err))
+		logger.Error("Error sending message: %w", zap.Error(err))
 	}
 	// Отправляем клавиатуру с номерами
 	keyboardMsg := tgbotapi.NewMessage(userID, "👇 *Нажмите номер учителя:*")
 	keyboardMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
 	if _, err := bot.Send(keyboardMsg); err != nil {
-		logger.Error(fmt.Sprintf("Error sending keyboard: %v", err))
+		logger.Error("Error sending keyboard: %w", zap.Error(err))
 		return state
 	}
 	return state
 }
 func ShowTestList(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext, Caption string) {
 	userID := getUserID(update)
-	userStates := BotContext.GetUserStattes()
-	state := userStates[userID]
-	testList, err := BotContext.UserRepository.GetTestByUser(state.Student.Telegram_id)
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(userID))
+	if err != nil {
+		logger.Error("Ошибка при получении данных из cache: %w", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		return
+	}
+	testList, err := BotContext.UserRepository.DataRepository.GetTestByUser(state.Student.Telegram_id)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Не удалось получить список тестов. Ошибка: %v", err))
 	}
 	state.TestList = testList
-	BotContext.SetUserState(userID, state)
+	SetState(bot, update, BotContext, logger, userID, state)
 	if len(testList) == 0 {
 		logger.Info("У ученика нет пройденных тестов")
 		return
@@ -337,9 +353,13 @@ func ShowTestListMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.
 
 func ShowResultMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger, BotContext *domain.BotContext) {
 	chatID := getUserID(update)
-	userStates := BotContext.GetUserStattes()
-	state := userStates[chatID]
-	result, err := BotContext.UserRepository.GetResultByUser(state.Student.Telegram_id, 100)
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(chatID))
+	if err != nil {
+		logger.Error("Ошибка при получении данных из cache: %w", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		return
+	}
+	result, err := BotContext.UserRepository.DataRepository.GetResultByUser(state.Student.Telegram_id, 100)
 	if err != nil {
 		logger.Warn(fmt.Sprintf("Не удолось получить результаты тестов. Ошибка: %v", err))
 		return
@@ -360,8 +380,12 @@ func ShowResultMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Lo
 
 func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyboard tgbotapi.InlineKeyboardMarkup, logger *zap.Logger, BotContext *domain.BotContext, imageName string) {
 	chatID := getUserID(update)
-	userStates := BotContext.GetUserStattes()
-	state := userStates[chatID]
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(chatID))
+	if err != nil {
+		logger.Error("Ошибка при получении данных из cache: %w", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		return
+	}
 	photoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imageName))
 	photoMsg.Caption = Caption
 	photoMsg.ReplyMarkup = keyboard
@@ -373,20 +397,23 @@ func sendMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyb
 	}
 	state.MessageID = sendMessage.MessageID
 	logger.Debug(fmt.Sprintf("Saving MessageID: %d for chat: %d", state.MessageID, chatID))
-	BotContext.SetUserState(chatID, state)
-
+	SetState(bot, update, BotContext, logger, chatID, state)
 }
 
 func editMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, Caption string, keyboard tgbotapi.InlineKeyboardMarkup, logger *zap.Logger, BotContext *domain.BotContext) {
 	chatID := getUserID(update)
-	userStates := BotContext.GetUserStattes()
-	state := userStates[chatID]
+	state, errget := BotContext.UserRepository.CacheRepository.Get(int(chatID))
+	if errget != nil {
+		logger.Error("Ошибка при получении данных из cache: %w", zap.Error(errget))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		return
+	}
 	logger.Debug(fmt.Sprintf("Trying to edit MessageID: %d for chat: %d", state.MessageID, chatID))
 	editMessage := tgbotapi.NewEditMessageCaption(chatID, state.MessageID, Caption)
 	editMessage.ReplyMarkup = &keyboard
 	_, err := bot.Send(editMessage)
 	if err != nil {
-		logger.Debug(fmt.Sprintf("Error edit photo message: %v", err))
+		logger.Sugar().Debugf("Error edit photo message: %v", err)
 	}
 }
 
@@ -397,8 +424,12 @@ func ReturnStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *d
 	} else {
 		userID = update.Message.Chat.ID
 	}
-	userStates := BotContext.GetUserStattes()
-	state := userStates[userID]
+	state, err := BotContext.UserRepository.CacheRepository.Get(int(userID))
+	if err != nil {
+		logger.Error("Ошибка при получении данных из cache: %w", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+		return
+	}
 	state.AllQuestions = nil
 	state.UserAnswers = nil
 	state.CorrectAnswers = nil
@@ -408,7 +439,7 @@ func ReturnStartMenu(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *d
 	state.Data["Topic"] = ""
 	state.Data["level"] = ""
 	delete(state.Data, "score")
-	BotContext.SetUserState(userID, state)
+	SetState(bot, update, BotContext, logger, userID, state)
 	ShowStartMenu(bot, update, logger, BotContext, Caption)
 }
 func getUserID(update tgbotapi.Update) int64 {
@@ -419,4 +450,11 @@ func getUserID(update tgbotapi.Update) int64 {
 	}
 	chatID = update.Message.Chat.ID
 	return chatID
+}
+
+func SetState(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger, userID int64, state models.UserState) {
+	if err := BotContext.UserRepository.CacheRepository.SetWithTTL(int(userID), state, 0); err != nil {
+		logger.Error("Ошибка при получении данных из cache: %w", zap.Error(err))
+		ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!")
+	}
 }

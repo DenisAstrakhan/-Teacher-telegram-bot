@@ -5,13 +5,25 @@ import (
 	"time"
 )
 
-type User struct {
-	TelegramID   int
-	TelegramName string
-	FullName     string
-	TeacherName  string
+/*
+	type User struct {
+		TelegramID   int
+		TelegramName string
+		FullName     string
+		TeacherName  string
+	}
+*/
+type UserRepository struct {
+	DataRepository  UserDataRepository
+	CacheRepository UserCacheRepository
 }
-type UserRepository interface {
+
+func (r UserRepository) Close() {
+	r.CacheRepository.Close()
+	r.DataRepository.Close()
+}
+
+type UserDataRepository interface {
 	InsertTecher(
 		telegram_id int,
 		telegram_name *string,
@@ -44,5 +56,16 @@ type UserRepository interface {
 		colum_name string,
 		value any) error
 	GetTeacherLists() ([]models.Teacher, error)
+	Close() error
+}
+type UserCacheRepository interface {
+	Ping() error
+	SetWithTTL(key int, value models.UserState, ttl time.Duration) error
+	Get(key int) (models.UserState, error)
+	GetAllKeys() ([]string, error)
+	Delete(key int) error
+	Exists(key int) (bool, error)
+	Expire(key int, ttl time.Duration) error
+	FlushDB() error
 	Close() error
 }

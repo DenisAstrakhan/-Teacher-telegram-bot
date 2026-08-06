@@ -127,7 +127,7 @@ ORDER BY id ASC LIMIT ?
 		if err := rows.Scan(&id, &result, &time_finish); err != nil {
 			return nil, fmt.Errorf("scan error: %w", err)
 		}
-		results = append(results, models.UserResult{Id: id, Result: result, Time_finish: time_finish})
+		results = append(results, models.UserResult{Id: id, Result: result, Time_finish: &time_finish})
 	}
 	return results, rows.Err()
 }
@@ -205,8 +205,8 @@ FROM teacher
 }
 
 func (r *mysqlRepository) Close() error {
-	if r.conn != nil {
-		return r.conn.Close()
+	if err := r.conn.Close(); err != nil {
+		return err
 	}
 	return nil
 }
