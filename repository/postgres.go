@@ -4,14 +4,16 @@ import (
 	"TeacherBot/models"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type postgresRepository struct {
-	conn *pgx.Conn
+	conn    *pgxpool.Pool
+	timeout time.Duration
 }
 
 func (r *postgresRepository) InsertTecher(telegram_id int, telegram_name *string, teacher_name string, ctx context.Context) error {
@@ -19,7 +21,7 @@ func (r *postgresRepository) InsertTecher(telegram_id int, telegram_name *string
 INSERT INTO bot.teacher (telegram_id, telegram_name, teacher_name)
 VALUES ($1,$2,$3);
 `
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	_, err := r.conn.Exec(queryCtx, SQLQuery, telegram_id, telegram_name, teacher_name)
 	return err
@@ -35,7 +37,7 @@ func (r *postgresRepository) InsertUser(
 INSERT INTO bot.users (telegram_id, telegram_name, full_name, teacher_ID)
 VALUES ($1,$2,$3,$4);
 `
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	_, err := r.conn.Exec(queryCtx, SQLQuery, telegram_id, telegram_name, full_name, teacher_ID)
 	return err
@@ -54,7 +56,7 @@ func (r *postgresRepository) InsertTests(
 INSERT INTO bot.tests (subject,level, topic, test,result,time_finish,user_id)
 VALUES ($1,$2,$3,$4,$5,$6,$7);
 `
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	_, err := r.conn.Exec(queryCtx, SQLQuery, subject, level, topic, test, result, time_finish, user_id)
 	return err
@@ -67,7 +69,7 @@ func (r *postgresRepository) UpdateRow(
 	indexColumn string,
 	index int,
 	ctx context.Context) error {
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	SQLQuery := fmt.Sprintf("UPDATE %s SET %s = $1 WHERE %s=$2", "bot."+table, column, indexColumn)
 	_, err := r.conn.Exec(queryCtx, SQLQuery, value, index)
@@ -75,7 +77,7 @@ func (r *postgresRepository) UpdateRow(
 }
 
 func (r *postgresRepository) DeleteRow(table string, column string, index int, ctx context.Context) error {
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	SQLQuery := fmt.Sprintf("DELETE FROM %s WHERE %s=$1", "bot."+table, column)
 	_, err := r.conn.Exec(queryCtx, SQLQuery, index)
@@ -89,7 +91,7 @@ FROM bot.users
 WHERE teacher_ID = $1
 LIMIT $2
 `
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	rows, err := r.conn.Query(queryCtx, SQLQuery, teacher_ID, limit)
 	if err != nil {
@@ -116,7 +118,7 @@ FROM bot.tests
 WHERE user_id = $1
 ORDER BY id ASC LIMIT $2
 `
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	rows, err := r.conn.Query(queryCtx, SQLQuery, user_id, limit)
 	if err != nil {
@@ -142,7 +144,7 @@ SELECT id,subject,level,topic,test,result
 FROM bot.tests
 WHERE user_id=$1
 `
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	rows, err := r.conn.Query(queryCtx, SQLQuery, user_id)
 	if err != nil {
@@ -170,7 +172,7 @@ SELECT EXISTS(
 SELECT * FROM %s 
 WHERE %s = $1);
 `, "bot."+table_name, colum_name)
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	var exists bool
 	err := r.conn.QueryRow(queryCtx, SQLQuery, value).Scan(&exists)
@@ -189,7 +191,7 @@ func (r *postgresRepository) GetTeacherLists(ctx context.Context) ([]models.Teac
 SELECT telegram_id,teacher_name
 FROM bot.teacher
 `
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	rows, err := r.conn.Query(queryCtx, SQLQuery)
 	if err != nil {
@@ -209,10 +211,9 @@ FROM bot.teacher
 }
 
 func (r *postgresRepository) Close() error {
-	queryCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := r.conn.Close(queryCtx); err != nil {
-		return err
+	if r.conn != nil {
+		r.conn.Close()
+		return nil
 	}
-	return nil
+	return errors.New("pgxpoll nil")
 }

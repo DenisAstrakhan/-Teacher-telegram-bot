@@ -3,7 +3,14 @@ export
 POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@bot-postgres:5432/${POSTGRES_DB}?sslmode=disable
 MYSQL_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(bot-mysql:3306)/${MYSQL_DATABASE}
 SQLITE_EXEC=docker exec -i bot-env-sqlite sqlite3 /data/database.db
+CLICKHOUSE_URL=clickhouse://${CLICKHOUSE_HOST}?username=${CLICKHOUSE_USER}&password=${CLICKHOUSE_PASSWORD}&database=${CLICKHOUSE_DB}&x-multi-statement=true&x-migrations-table-engine=MergeTree&x-migrations-table=clickhouse_migrations
 
+env-up:
+	@$(MAKE) redis-up
+	@$(MAKE) clickhouse-up
+env-down:
+	@$(MAKE) redis-down
+	@$(MAKE) clickhouse-down
 sqlite-up:
 	@docker compose up -d bot-sqlite
 sqlite-down:
@@ -12,16 +19,22 @@ mysql-up:
 	@docker compose up -d bot-mysql
 mysql-down:
 	@docker compose down bot-mysql
+clickhouse-up:
+	mkdir -p out/clickhousedata
+	sudo chown -R 101:101 out/clickhousedata
+	@docker compose up -d bot-clickhouse
+clickhouse-down:
+	@docker compose down bot-clickhouse
 # Дать права пользователю MySQL на создание схем и таблиц
 mysql-grant-privileges:
 	@echo "Выдача прав пользователю ${MYSQL_USER}..."
 	docker exec -it bot-env-mysql mysql -u root -p${MYSQL_ROOT_PASSWORD} -e "GRANT ALL PRIVILEGES ON *.* TO '${MYSQL_USER}'@'%' WITH GRANT OPTION; FLUSH PRIVILEGES;"
 	@echo "Права успешно выданы!"
 	@docker exec -it bot-env-mysql mysql -u root -p${MYSQL_ROOT_PASSWORD} -e "SHOW GRANTS FOR '${MYSQL_USER}'@'%';"
-env-up:
+postgres-up:
 	@docker compose up -d bot-postgres
 
-env-down:
+postgres-down:
 	@docker compose down bot-postgres
 
 env-cleanup:
@@ -169,6 +182,35 @@ redis-up:
 
 redis-down:
 	docker compose down redis
+
+migrate-clickhouse-create:
+	@if [ -z "$(seq)" ]; then \
+		echo "Отсутствует необходимый параметр seq. Пример: make migrate-clickhouse-create seq=init"; \
+		exit 1; \
+	fi; \
+	docker compose run --rm --user root bot-postgres-migrate \
+		create \
+		-ext sql \
+		-dir /migrations/clickhouse \
+		-seq "$(seq)"; \
+	sudo chown -R $(shell id -u):$(shell id -g) ./migrations/clickhouse
+
+migrate-clickhouse-action:
+	@if [ -z "$(action)" ]; then \
+		echo "Отсутствует необходимый параметр action. Пример: make migrate-clickhouse-action action=up 1"; \
+		exit 1; \
+	fi; \
+	docker compose run --rm --user root bot-postgres-migrate \
+	-path /migrations/clickhouse \
+	-database "$(CLICKHOUSE_URL)" \
+	"$(action)"
+
+migrate-clickhouse-up:
+	@$(MAKE) migrate-clickhouse-action action=up 
+
+migrate-clickhouse-down:
+	@$(MAKE) migrate-clickhouse-action action=down
+
 run-service:
 	go run main.go
 

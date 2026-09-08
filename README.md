@@ -5,90 +5,81 @@
 [![GigaChat Go](https://img.shields.io/badge/gigachat--go-v1.0.2-purple)](https://github.com/tigusigalpa/gigachat-go)
 
 A bot for conducting English language tests using GigaChat from Sber. Users select their knowledge level and topic, after which GigaChat dynamically generates a test of 10 questions. Two testing formats are supported: classic (multiple choice with 4 options) and interactive (free conversation with AI). If GigaChat returns an invalid test, the bot automatically returns to the main menu.
-🚀 Key Features
 
-    User roles — support for two roles: student and teacher.
+## 🚀 Key Features
 
-    Taking tests — students take tests in one of two formats (classic or interactive).
+- User roles — support for two roles: student and teacher.
+- Taking tests — students take tests in one of two formats (classic or interactive).
+- Saving results — all test results are stored in the database.
+- Teacher result management — teachers can view, edit, and delete their students' test results.
+- Topic selection — topics are predefined in the bot's menu.
+- Manual subject/topic setup — users can specify custom values (validated against the subject list).
+- Media saving — all user images and voice messages are saved to the `out/` folder.
+- Configuration without recompilation:
+  - Allowed subjects list (`SubjectList`).
+  - Profanity dictionary (`russian-bad-words`).
+  - GigaChat prompts (`RunStepByStepTest`, `RunInteractiveTest`).
+  - Logging level (via environment variable).
+- Profanity filtering — automatic checking of user messages.
+- **Logging** — structured logging with rotation and ClickHouse database support (console, file, and ClickHouse).
 
-    Saving results — all test results are stored in the database.
+## 🗄️ Data Storage
 
-    Teacher result management — teachers can view, edit, and delete their students' test results.
-
-    Topic selection — topics are predefined in the bot's menu.
-
-    Manual subject/topic setup — users can specify custom values (validated against the subject list).
-
-    Media saving — all user images and voice messages are saved to the out/ folder.
-
-    Configuration without recompilation:
-
-        Allowed subjects list (SubjectList).
-
-        Profanity dictionary (russian-bad-words).
-
-        GigaChat prompts (RunStepByStepTest, RunInteractiveTest).
-
-        Logging level (via environment variable).
-
-    Profanity filtering — automatic checking of user messages.
-
-    Logging — structured logging with rotation (supports multiple levels).
-
-🗄️ Data Storage
-
-    Database — configurable via environment variables. Three database systems are supported:
-
-        SQLite
-
-        MySQL
-
-        PostgreSQL
-
-    Caching — implemented using Redis.
----
-
-🛠 Technologies and Libraries
-Library	Version	Purpose
-go-telegram-bot-api/v5	v5.5.1	Telegram Bot API interaction
-gigachat-go	v1.0.2	GigaChat API client (Sber)
-go-sensitive-word	v1.1.0	Profanity filtering
-zap	v1.28.0	High-performance structured logging
-godotenv	v1.5.1	Load environment variables from .env file
-go-redis/redis/v8	v8.11.5	Redis client for caching
-go-sql-driver/mysql	v1.10.0	MySQL driver
-pgx/v5	v5.10.0	PostgreSQL driver
-go-sqlite3	v1.14.48	SQLite driver
+- **Database** — configurable via environment variables. Three database systems are supported:
+  - SQLite
+  - MySQL
+  - PostgreSQL
+- **Caching** — implemented using Redis.
+- **Logging Storage** — logs can be stored in:
+  - Console output
+  - Log files (with rotation)
+  - ClickHouse database (for centralized log storage and analytics)
 
 ---
+
+## 🛠 Technologies and Libraries
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| go-telegram-bot-api/v5 | v5.5.1 | Telegram Bot API interaction |
+| gigachat-go | v1.0.2 | GigaChat API client (Sber) |
+| go-sensitive-word | v1.1.0 | Profanity filtering |
+| zap | v1.28.0 | High-performance structured logging |
+| godotenv | v1.5.1 | Load environment variables from .env file |
+| go-redis/redis/v8 | v8.11.5 | Redis client for caching |
+| go-sql-driver/mysql | v1.10.0 | MySQL driver |
+| pgx/v5 | v5.10.0 | PostgreSQL driver |
+| go-sqlite3 | v1.14.48 | SQLite driver |
+| clickhouse-go/v2 | v2.48.0 | ClickHouse driver for log storage |
+
+---
+
 ## 📁 Project Structure
 
-```
 TeacherBot/
 ├── dictionaries/
-│   ├── SubjectList          # Allowed subjects (one per line)
-│   └── russian-bad-words    # Profanity dictionary
-├── domain/                  # Contains data models, repository interface, and application context
-├── gigachat/                # GigaChat client and test logic
-├── handlers/                # User action handlers
-├── Image/                   # Menu images
-├── logger/                  # Configurable logger (zap)
-├── logs/                    # Log files directory
-├── menu/                    # Bot menu with inline keyboard
-├── models/                  # Models and constructors
-├── out/                     # Saved images and voice messages
+│ ├── SubjectList # Allowed subjects (one per line)
+│ └── russian-bad-words # Profanity dictionary
+├── domain/ # Contains data models, repository interface, and application context
+├── gigachat/ # GigaChat client and test logic
+├── handlers/ # User action handlers
+├── Image/ # Menu images
+├── logger/ # Configurable logger (zap) with multiple outputs
+├── logs/ # Log files directory
+├── menu/ # Bot menu with inline keyboard
+├── models/ # Models and constructors
+├── out/ # Saved images and voice messages
 ├── prompts/
-│   ├── RunStepByStepTest    # Prompt for classic test
-│   └── RunInteractiveTest   # Prompt for interactive mode
-├── repository               # Implementation of specific databases and cache
-├── .env                     # Environment variables (not committed)
-├── .env.example             # Example environment variables
+│ ├── RunStepByStepTest # Prompt for classic test
+│ └── RunInteractiveTest # Prompt for interactive mode
+├── repository # Implementation of specific databases and cache
+├── .env # Environment variables (not committed)
+├── .env.example # Example environment variables
 ├── go.mod
 ├── go.sum
-└── main.go                  # Entry point
-```
-
+└── main.go # Entry point
 text
+
 
 ---
 
@@ -106,20 +97,59 @@ text
 Create a `.env` file in the project root:
 
 ```env
+# Telegram Bot
 BOT_TOKEN=your_telegram_bot_token
+
+# GigaChat
 GIGACHAT_CLIENT_ID=your_client_id
 GIGACHAT_CLIENT_SECRET=your_client_secret
+
+# Logging
 LOG_LEVEL=debug   # debug, info, warn, error
-REPOSITORY_TYPE= #sqlite, mysql, postgres
+
+# Repository Type (sqlite, mysql, postgres)
+REPOSITORY_TYPE=
+
+# PostgreSQL Configuration
 POSTGRES_USER=your_user_name
 POSTGRES_PASSWORD=your_password
 POSTGRES_DB=your_database
-MYSQL_ROOT_PASSWORD=your_root_pasword
+POSTGRES_HOST=localhost:5432
+POSTGRES_TIMEOUT=5s
+
+# MySQL Configuration
+MYSQL_ROOT_PASSWORD=your_root_password
 MYSQL_DATABASE=your_database
 MYSQL_USER=your_user_name
 MYSQL_PASSWORD=your_password
-CACHE_REPOSITORY_TYPE= #redis
+MYSQL_HOST=localhost:3306
+MYSQL_TIMEOUT=5s
+
+# SQLite Configuration
+SQLITE_DATA_DIR=./out/sqlitedata
+SQLITE_TIMEOUT=5s
+
+# Cache Repository Type (redis)
+CACHE_REPOSITORY_TYPE=
+
+# Redis Configuration
+REDIS_HOST=localhost:6379
+REDIS_TIMEOUT=5s
 MAX_MEMORY=redis_memory_limit
+
+# Logger Repository Type (clickhouse)
+LOGGER_REPOSITORY_TYPE=clickhouse
+
+# ClickHouse Configuration (for log storage)
+CLICKHOUSE_HOST=localhost:9000
+CLICKHOUSE_DB=logs
+CLICKHOUSE_USER=default
+CLICKHOUSE_PASSWORD=
+CLICKHOUSE_TIMEOUT=5s
+
+# Service Configuration
+SERVICE_NAME=my-app
+
 3. Configuration Without Recompilation
 File	Purpose
 dictionaries/SubjectList	Allowed subjects (one per line)
@@ -128,13 +158,16 @@ prompts/RunStepByStepTest	Prompt for classic test (10 questions with options)
 prompts/RunInteractiveTest	Prompt for interactive mode (free dialogue)
 4. Launch
 bash
+
 go mod tidy
 go run main.go
-Or build a binary:
 
+Or build a binary:
 bash
+
 go build -o teacher-bot.exe main.go
 ./teacher-bot.exe
+
 🧠 How It Works
 1. Authorization and Role Detection
 
@@ -180,49 +213,124 @@ User Choice	Action
 Step	Action
 1	The bot displays a list of students linked to this teacher.
 2	When a student is selected → the bot shows a list of completed tests for that student.
-3	When a specific test is selected → the bot displays a management menu with the following options:
+3	When a specific test is selected → the bot displays a management menu with options:
 	• Delete test
 	• Edit test result (score/grade)
-
 Media Saving
-All user-sent images and voice messages are saved to the out/ folder with the following naming format:
 
+All user-sent images and voice messages are saved to the out/ folder with the following naming format:
 Type	Name Format
 Images	photo_<userID>_<timestamp>.jpg
-Voice	voice_<userID>_<timestamp>.ogg
+Voice	voice_<userID>>_<timestamp>.ogg
 Profanity Filtering
-Uses the go-sensitive-word library
 
-Dictionary loaded from dictionaries/russian-bad-words
+    Uses the go-sensitive-word library
 
-Every message sent to GigaChat is checked by the filter
+    Dictionary loaded from dictionaries/russian-bad-words
 
-If profanity is detected → bot sends a warning, request to GigaChat is blocked
+    Every message sent to GigaChat is checked by the filter
 
-Logging (zap)
-Log file: logs/2006-01-02T15.04.05.000000.log
+    If profanity is detected → bot sends a warning, request to GigaChat is blocked
 
-Structured format — convenient for parsing and analysis
+📊 Logging (zap)
 
-Levels via LOG_LEVEL:
+Logging is implemented using the zap library and supports three simultaneous outputs:
+Log Outputs
+Output	Description
+Console	Real-time log output to stdout/stderr
+File	Rotating log files in logs/ directory (format: 2006-01-02T15.04.05.000000.log)
+ClickHouse	Structured logs stored in ClickHouse database for centralized analytics
+Log Levels
 
+Log level is set via the LOG_LEVEL environment variable:
 Level	Description
 debug	Full debugging info (including raw GigaChat responses)
 info	Main events (startup, topic selection, test completion)
 warn	Non-critical errors (retries, timeouts)
 error	Critical errors (GigaChat unavailable, file issues)
+ClickHouse Storage
+Table Structure
+sql
+
+CREATE TABLE IF NOT EXISTS app_logs (
+    timestamp DateTime DEFAULT now(),
+    level String,
+    service String,
+    user_id String,
+    message String
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(timestamp)
+ORDER BY (timestamp, level);
+
+Table Fields
+Field	Type	Description
+timestamp	DateTime	Event timestamp (auto-generated)
+level	String	Log level (debug, info, warn, error)
+service	String	Service name (from SERVICE_NAME)
+user_id	String	Telegram user ID
+message	String	Log message text
+Storage Features
+
+    Partitioning by year and month (toYYYYMM(timestamp)) — for efficient storage and fast access
+
+    Sorting by timestamp and level — for optimal query performance
+
+    Auto-generation of current timestamp when creating a record
+
+Example Queries
+sql
+
+-- Last 100 error logs
+SELECT *
+FROM app_logs
+WHERE level = 'error'
+ORDER BY timestamp DESC
+LIMIT 100;
+
+-- Log count by day for the last week
+SELECT 
+    toDate(timestamp) as date,
+    level,
+    count() as count
+FROM app_logs
+WHERE timestamp > now() - INTERVAL 7 DAY
+GROUP BY date, level
+ORDER BY date DESC;
+
+-- Search logs by specific user
+SELECT *
+FROM app_logs
+WHERE user_id = '123456789'
+  AND timestamp > now() - INTERVAL 1 DAY
+ORDER BY timestamp DESC;
+
+ClickHouse Configuration
+
+To enable ClickHouse logging, add to .env:
+env
+
+LOGGER_REPOSITORY_TYPE=clickhouse
+CLICKHOUSE_HOST=localhost:9000
+CLICKHOUSE_DB=logs
+CLICKHOUSE_USER=default
+CLICKHOUSE_PASSWORD=
+CLICKHOUSE_TIMEOUT=5s
+SERVICE_NAME=my-app
+
 🔧 Planned Improvements (TODO)
-User authentication
 
-User statistics (number of tests completed, progress)
+    User authentication
 
-Export results to PDF
+    User statistics (number of tests completed, progress)
 
-Automatic cleanup of old files in out/ folder
+    Export results to PDF
 
-Webhook support instead of Long Polling (if the bot gains a million users)
+    Automatic cleanup of old files in out/ folder
+
+    Webhook support instead of Long Polling (if the bot gains a million users)
 
 ❓ FAQ
+
 Q: How do I add a new subject?
 A: Add a line to dictionaries/SubjectList. No bot restart needed — changes are picked up automatically.
 
@@ -238,13 +346,18 @@ A: In the out/ folder. It is recommended to periodically clean it or set up auto
 Q: Can I change the number of questions?
 A: Yes — edit the prompt in prompts/RunStepByStepTest, replacing "10 questions" with the desired number. The bot will automatically adapt.
 
+Q: How do I enable ClickHouse logging?
+A: Set LOGGER_REPOSITORY_TYPE=clickhouse in .env and configure ClickHouse connection settings. All logs will be automatically written to both ClickHouse and file/console.
+
+Q: Can I use multiple log outputs simultaneously?
+A: Yes — logs are written to console, file, and ClickHouse (if configured) simultaneously by default.
 📄 License
+
 MIT
-
 🤝 Feedback
-For questions about improvements and bugs — create an Issue in the project repository.
-When editing dictionaries/ or prompts/, no bot restart is required.
 
+For questions about improvements and bugs — create an Issue in the repository.
+When editing dictionaries/ or prompts/, no bot restart is required.
 📖 Русская версия / Russian Version
 TeacherBot — Telegram бот для тестирования по английскому языку с GigaChat
 
@@ -281,7 +394,7 @@ https://img.shields.io/badge/gigachat--go-v1.0.2-purple
 
     Фильтрация нецензурной лексики — автоматическая проверка сообщений пользователей.
 
-    Логирование — структурированное логирование с ротацией (поддерживает несколько уровней).
+    Логирование — структурированное логирование с ротацией и поддержкой ClickHouse (консоль, файл, ClickHouse).
 
 🗄️ Хранение данных
 
@@ -295,6 +408,14 @@ https://img.shields.io/badge/gigachat--go-v1.0.2-purple
 
     Кэширование — осуществляется с использованием Redis.
 
+    Хранение логов — логи могут сохраняться в:
+
+        Консоль
+
+        Файлы (с ротацией)
+
+        ClickHouse (для централизованного хранения и аналитики)
+
 🛠 Технологии и библиотеки
 Библиотека	Версия	Назначение
 go-telegram-bot-api/v5	v5.5.1	Взаимодействие с Telegram Bot API
@@ -306,6 +427,7 @@ go-redis/redis/v8	v8.11.5	Клиент Redis для кэширования
 go-sql-driver/mysql	v1.10.0	Драйвер для MySQL
 pgx/v5	v5.10.0	Драйвер для PostgreSQL
 go-sqlite3	v1.14.48	Драйвер для SQLite
+clickhouse-go/v2	v2.48.0	Драйвер ClickHouse для хранения логов
 📁 Структура проекта
 text
 
@@ -317,7 +439,7 @@ TeacherBot/
 ├── gigachat/                # Клиент GigaChat и логика тестов
 ├── handlers/                # Обработчики действий пользователя
 ├── Image/                   # Изображения для меню
-├── logger/                  # Настраиваемый логер (zap)
+├── logger/                  # Настраиваемый логер (zap) с множественными выводами
 ├── logs/                    # Директория с лог-файлами
 ├── menu/                    # Меню бота с инлайн-клавиатурой
 ├── models/                  # Модели и их конструкторы
@@ -342,20 +464,58 @@ Sber AI (GigaChat)	Зарегистрируйтесь в личном кабин
 Создайте файл .env в корне проекта:
 env
 
+# Telegram Bot
 BOT_TOKEN=your_telegram_bot_token
+
+# GigaChat
 GIGACHAT_CLIENT_ID=your_client_id
 GIGACHAT_CLIENT_SECRET=your_client_secret
+
+# Логирование
 LOG_LEVEL=debug   # debug, info, warn, error
-REPOSITORY_TYPE=  # sqlite, mysql, postgres
+
+# Тип репозитория (sqlite, mysql, postgres)
+REPOSITORY_TYPE=
+
+# PostgreSQL
 POSTGRES_USER=your_user_name
 POSTGRES_PASSWORD=your_password
 POSTGRES_DB=your_database
+POSTGRES_HOST=localhost:5432
+POSTGRES_TIMEOUT=5s
+
+# MySQL
 MYSQL_ROOT_PASSWORD=your_root_password
 MYSQL_DATABASE=your_database
 MYSQL_USER=your_user_name
 MYSQL_PASSWORD=your_password
-CACHE_REPOSITORY_TYPE=  # redis
+MYSQL_HOST=localhost:3306
+MYSQL_TIMEOUT=5s
+
+# SQLite
+SQLITE_DATA_DIR=./out/sqlitedata
+SQLITE_TIMEOUT=5s
+
+# Кэш (redis)
+CACHE_REPOSITORY_TYPE=
+
+# Redis
+REDIS_HOST=localhost:6379
+REDIS_TIMEOUT=5s
 MAX_MEMORY=redis_memory_limit
+
+# Тип репозитория для логов (clickhouse)
+LOGGER_REPOSITORY_TYPE=clickhouse
+
+# ClickHouse (для хранения логов)
+CLICKHOUSE_HOST=localhost:9000
+CLICKHOUSE_DB=logs
+CLICKHOUSE_USER=default
+CLICKHOUSE_PASSWORD=
+CLICKHOUSE_TIMEOUT=5s
+
+# Конфигурация сервиса
+SERVICE_NAME=my-app
 
 3. Настройка без перекомпиляции
 Файл	Назначение
@@ -428,7 +588,7 @@ go build -o teacher-bot.exe main.go
 Все изображения и голосовые сообщения, отправленные пользователем, сохраняются в папку out/ со следующим форматом имени:
 Тип	Формат имени
 Изображения	photo_<userID>_<timestamp>.jpg
-Голосовые	voice_<userID>_<timestamp>.ogg
+Голосовые	voice_<userID>>_<timestamp>.ogg
 Фильтрация нецензурной лексики
 
     Используется библиотека go-sensitive-word
@@ -439,19 +599,91 @@ go build -o teacher-bot.exe main.go
 
     Если обнаружен мат → бот отправляет предупреждение, запрос к GigaChat блокируется
 
-Логирование (zap)
+📊 Логирование (zap)
 
-    Файл логов: logs/2006-01-02T15.04.05.000000.log
+Логирование реализовано с использованием библиотеки zap и поддерживает три вывода одновременно:
+Выводы логов
+Вывод	Описание
+Консоль	Вывод логов в реальном времени в stdout/stderr
+Файл	Ротируемые файлы логов в директории logs/ (формат: 2006-01-02T15.04.05.000000.log)
+ClickHouse	Структурированные логи, сохраняемые в ClickHouse для централизованной аналитики
+Уровни логирования
 
-    Структурированный формат — удобен для парсинга и анализа
-
-    Уровни через LOG_LEVEL:
-
+Уровень задается через переменную окружения LOG_LEVEL:
 Уровень	Описание
 debug	Полная отладочная информация (включая сырые ответы GigaChat)
 info	Основные события (запуск, выбор темы, завершение теста)
 warn	Некритичные ошибки (повторы, таймауты)
 error	Критические ошибки (GigaChat недоступен, проблемы с файлами)
+Хранение в ClickHouse
+Структура таблицы
+sql
+
+CREATE TABLE IF NOT EXISTS app_logs (
+    timestamp DateTime DEFAULT now(),
+    level String,
+    service String,
+    user_id String,
+    message String
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(timestamp)
+ORDER BY (timestamp, level);
+
+Поля таблицы
+Поле	Тип	Описание
+timestamp	DateTime	Время события (автоматически)
+level	String	Уровень логирования (debug, info, warn, error)
+service	String	Имя сервиса (из SERVICE_NAME)
+user_id	String	ID пользователя Telegram
+message	String	Текст сообщения лога
+Особенности хранения
+
+    Партиционирование по году и месяцу (toYYYYMM(timestamp)) — для эффективного хранения и быстрого доступа
+
+    Сортировка по времени и уровню — для оптимальных запросов
+
+    Автоматическая вставка текущего времени при создании записи
+
+Примеры запросов
+sql
+
+-- Последние 100 логов с уровнем error
+SELECT *
+FROM app_logs
+WHERE level = 'error'
+ORDER BY timestamp DESC
+LIMIT 100;
+
+-- Количество логов по дням за последнюю неделю
+SELECT 
+    toDate(timestamp) as date,
+    level,
+    count() as count
+FROM app_logs
+WHERE timestamp > now() - INTERVAL 7 DAY
+GROUP BY date, level
+ORDER BY date DESC;
+
+-- Поиск логов по конкретному пользователю
+SELECT *
+FROM app_logs
+WHERE user_id = '123456789'
+  AND timestamp > now() - INTERVAL 1 DAY
+ORDER BY timestamp DESC;
+
+Настройка ClickHouse
+
+Для включения логирования в ClickHouse добавьте в .env:
+env
+
+LOGGER_REPOSITORY_TYPE=clickhouse
+CLICKHOUSE_HOST=localhost:9000
+CLICKHOUSE_DB=logs
+CLICKHOUSE_USER=default
+CLICKHOUSE_PASSWORD=
+CLICKHOUSE_TIMEOUT=5s
+SERVICE_NAME=my-app
+
 🔧 Планируемые улучшения (TODO)
 
     Аутентификация пользователей
@@ -480,9 +712,16 @@ error	Критические ошибки (GigaChat недоступен, про
 
 В: Можно ли изменить количество вопросов?
 О: Да — отредактируйте промпт в prompts/RunStepByStepTest, заменив "10 вопросов" на нужное количество. Бот автоматически адаптируется.
+
+В: Как включить логирование в ClickHouse?
+О: Установите LOGGER_REPOSITORY_TYPE=clickhouse в .env и настройте параметры подключения к ClickHouse. Все логи будут автоматически записываться одновременно в ClickHouse, файл и консоль.
+
+В: Можно ли использовать несколько выводов логов одновременно?
+О: Да — логи по умолчанию одновременно записываются в консоль, файл и ClickHouse (если настроен).
 📄 Лицензия
 
 MIT
 🤝 Обратная связь
 
 По вопросам улучшений и ошибок — создавайте Issue в репозитории проекта.
+При редактировании словарей и промптов перезапуск бота не требуется.

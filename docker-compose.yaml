@@ -70,6 +70,23 @@ services:
       - allkeys-lru
       - --maxmemory
       - ${MAX_MEMORY}
+  bot-clickhouse:
+    image: clickhouse/clickhouse-server:22.10
+    container_name: bot-env-clickhouse
+    user: "101:101"
+    ports:
+      - "8123:8123"   # HTTP-интерфейс (для API запросов, Grafana, curl)
+      - "9000:9000"   # Нативный TCP-протокол (для clickhouse-client)
+      - "9444:9444"   # HTTPS-интерфейс (опционально)
+    volumes:
+      - "./out/clickhousedata:/var/lib/clickhouse"
+      - "./repository/config.xml:/config.xml:ro"
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB} 
+      - CLICKHOUSE_CONFIG=/config.xml
+    command: ["clickhouse-server"]
+    restart: always
+   
       
   telegram-bot:
     image: telegram-bot

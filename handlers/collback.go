@@ -6,6 +6,7 @@ import (
 	"TeacherBot/menu"
 	"TeacherBot/models"
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -21,7 +22,8 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 	}
 	userID := update.CallbackQuery.From.ID
 	data := update.CallbackQuery.Data
-	logger.Sugar().Infof("User %d: press \"%s\" ", userID, data)
+	//logger.Sugar().Infof("User %d: press \"%s\" ", userID, data)
+	logger.Info(fmt.Sprintf("press \"%s\"", data), zap.String("user_id", strconv.Itoa(int(userID))))
 	// Инициализируем состояние пользователя
 	userNew, state, err := initializationUserStates(logger, userID, BotContext, bot, update, ctx)
 	logger.Sugar().Debugf("userNew: %t", userNew)
