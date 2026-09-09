@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -18,7 +19,7 @@ import (
 func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, ctx context.Context) {
 	userID := update.Message.Chat.ID
 	text := update.Message.Text
-	logger.Sugar().Infof("User %d: message \"%s\" ", userID, text)
+	logger.Info(fmt.Sprintf("message \"%s\" ", text), zap.String("user_id", strconv.Itoa(int(userID))))
 	// Инициализируем состояние пользователя
 	userNew, state, err := initializationUserStates(logger, userID, BotContext, bot, update, ctx)
 	logger.Sugar().Debugf("userNew - %t", userNew)
@@ -44,7 +45,7 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 	default:
 		//Проверка на пустой ввод
 		if len(strings.Fields(text)) == 0 {
-			logger.Sugar().Infof("User %d entered nothing", userID)
+			logger.Info("entered nothing", zap.String("user_id", strconv.Itoa(int(userID))))
 			return
 		}
 		//Проверка на коректность ввода
@@ -68,13 +69,13 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		logger.Debug("Correct input")
 		if _, exists := state.Data["score"]; exists {
 			// Пользователь проходит интерактивный тест
-			logger.Sugar().Infof("User %d interactive test message: %s ", userID, text)
+			logger.Info(fmt.Sprintf("interactive test message: %s", text), zap.String("user_id", strconv.Itoa(int(userID))))
 			gchat.InteractiveTest(bot, update, BotContext, logger, ctx)
 			return
 		}
 		if state.CurrentMenu == "setting" && state.Data["subject"] == "" {
 			//Пользователь выбирает предмет теста
-			logger.Sugar().Infof("User %d selected subject test: %s ", userID, text)
+			logger.Info(fmt.Sprintf(" selected subject test: %s", text), zap.String("user_id", strconv.Itoa(int(userID))))
 			if !validationSubject(text, userID, BotContext, logger) {
 				msg := tgbotapi.NewMessage(userID, "Попробуйте ещё раз! Указанного предмета нет в согласованном списке")
 				if _, err := bot.Send(msg); err != nil {
@@ -92,7 +93,7 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		}
 		if state.CurrentMenu == "setting" && state.Data["Topic"] == "" && state.Data["subject"] != "" {
 			//Пользователь выбирает тему теста
-			logger.Sugar().Infof("User %d selected topic test: %s ", userID, text)
+			logger.Info(fmt.Sprintf("selected topic test: %s", text), zap.String("user_id", strconv.Itoa(int(userID))))
 			state.Data["Topic"] = text
 			state.Data["level"] = "Базовый"
 			state.MessageID = 0
@@ -107,7 +108,7 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 				logger.Error("Failed to add teacher to the database: %w", zap.Error(err))
 				return
 			}
-			logger.Sugar().Infof("User %d added to the database", userID)
+			logger.Info("added to the database", zap.String("user_id", strconv.Itoa(int(userID))))
 			menu.ShowTeacherMenu(bot, update, logger, BotContext, ctx)
 			return
 		}
@@ -162,7 +163,7 @@ func HandleMessage(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Upd
 func validationMessage(text string, userID int64, BotContext *domain.BotContext, logger *zap.Logger) bool {
 	//Проверка запрещённых слов
 	if BotContext.Filter.IsSensitive(text) {
-		logger.Sugar().Infof("User %d entered forbidden words", userID)
+		logger.Info("entered forbidden words", zap.String("user_id", strconv.Itoa(int(userID))))
 		return false
 	}
 	return true
@@ -172,10 +173,10 @@ func validationSubject(text string, userID int64, BotContext *domain.BotContext,
 	Subjects := BotContext.Subjects
 	BotContext.Mtx.RUnlock()
 	if _, exist := Subjects[strings.ToLower(text)]; exist {
-		logger.Sugar().Infof("User %d entered a subject from the list", userID)
+		logger.Info("entered a subject from the list", zap.String("user_id", strconv.Itoa(int(userID))))
 		return true
 	}
-	logger.Sugar().Infof("User %d entered a subject not in the list", userID)
+	logger.Info("entered a subject not in the list", zap.String("user_id", strconv.Itoa(int(userID))))
 	return false
 }
 func initializationUserStates(logger *zap.Logger, userID int64, BotContext *domain.BotContext, bot *tgbotapi.BotAPI, update tgbotapi.Update, ctx context.Context) (bool, models.UserState, error) {
