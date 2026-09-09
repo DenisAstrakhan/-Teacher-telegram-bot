@@ -24,12 +24,6 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		panic(err)
 	}
-	//Создаём логер
-	logger, logFileClose, err := logger.NewLogger(os.Getenv("LOG_LEVEL"))
-	if err != nil {
-		panic(err)
-	}
-	defer logFileClose()
 	//Создаём контекст для работы с репозиторием
 	RepositoryContext, RepositoryCancel := context.WithCancel(context.Background())
 	defer RepositoryCancel()
@@ -39,6 +33,12 @@ func main() {
 		fmt.Println("Failed to connect to the database: %w", err)
 	}
 	defer UserRepository.Close()
+	//Создаём логер
+	logger, logFileClose, err := logger.NewLogger(UserRepository.LoggerRepository, os.Getenv("LOG_LEVEL"))
+	if err != nil {
+		panic(err)
+	}
+	defer logFileClose()
 
 	// Создаём Giga chat клиента
 	GigaChat := gchat.StartBot()

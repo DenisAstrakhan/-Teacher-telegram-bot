@@ -47,15 +47,15 @@ func StartTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.
 	}
 	switch state.Data["test"] {
 	case "interactive":
-		logger.Sugar().Infof("User %d: Start interactive test Subject: \"%s\", Topic:  \"%s\", Level  \"%s\"", userID, state.Data["subject"], state.Data["Topic"], state.Data["level"])
+		logger.Info(fmt.Sprintf("Start interactive test Subject: \"%s\", Topic:  \"%s\", Level  \"%s\"", state.Data["subject"], state.Data["Topic"], state.Data["level"]), zap.String("user_id", strconv.Itoa(int(userID))))
 		InteractiveTest(bot, update, BotContext, logger, ctx)
 		return
 	case "simple":
-		logger.Sugar().Infof("User %d: Start simple test Subject: \"%s\", Topic:  \"%s\", Level  \"%s\"", userID, state.Data["subject"], state.Data["Topic"], state.Data["level"])
+		logger.Info(fmt.Sprintf("Start simple test Subject: \"%s\", Topic:  \"%s\", Level  \"%s\"", state.Data["subject"], state.Data["Topic"], state.Data["level"]), zap.String("user_id", strconv.Itoa(int(userID))))
 		SimpleTest(bot, update, BotContext, logger, ctx)
 		return
 	default:
-		logger.Sugar().Warnf("User %d: Failed to start tes", userID)
+		logger.Warn("Failed to start test", zap.String("user_id", strconv.Itoa(int(userID))))
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
 	}
 
@@ -78,12 +78,12 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *d
 		if _, err := bot.Request(msgToDelete); err != nil {
 			logger.Error("Error sending message: %w", zap.Error(err))
 		}
-		logger.Sugar().Infof("User %d: Is at the beginning of the test", userID)
+		logger.Info("Is at the beginning of the test", zap.String("user_id", strconv.Itoa(int(userID))))
 		state.Data["score"] = "0"
 		// Создаём "учителя" с памятью о ходе теста
 		promptfile, err := getPrompt("RunInteractiveTes.txt")
 		if err != nil {
-			logger.Sugar().Errorf("User %d: Failed to read prompt file Error: %w", userID, err)
+			logger.Error(fmt.Sprintf("Failed to read prompt file Error: %v", err), zap.String("user_id", strconv.Itoa(int(userID))))
 			menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
 			return
 		}
@@ -94,11 +94,11 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *d
 		// Получаем вопрос от учителя
 		response, err := client.Chat(conversation)
 		if err != nil {
-			logger.Sugar().Errorf("User %d: Failed to get question: Error: %w", userID, err)
+			logger.Error(fmt.Sprintf("Failed to get question: Error:: %v", err), zap.String("user_id", strconv.Itoa(int(userID))))
 			menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
 		}
 		question := gigachat.ExtractContent(response)
-		logger.Sugar().Infof("User %d: Teacher: %s", userID, question)
+		logger.Info(fmt.Sprintf("Teacher: %s", question), zap.String("user_id", strconv.Itoa(int(userID))))
 		conversation = append(conversation, gigachat.Message{Role: "assistant", Content: question})
 		// Отправляем вопрос пользоватпелю
 		msg := tgbotapi.NewMessage(userID, question)
@@ -114,16 +114,16 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *d
 	// Получаем вопрос от учителя
 	response, err := client.Chat(state.Conversation)
 	if err != nil {
-		logger.Sugar().Errorf("User %d: Failed to get question: Error: %w", userID, err)
+		logger.Error(fmt.Sprintf("Failed to get question: Error: %v", err), zap.String("user_id", strconv.Itoa(int(userID))))
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
 	}
 	question := gigachat.ExtractContent(response)
-	logger.Sugar().Infof("User %d: Teacher: %s", userID, question)
+	logger.Info(fmt.Sprintf("Teacher: %s", question), zap.String("user_id", strconv.Itoa(int(userID))))
 	scoreII, end := parseScoreDigit(question)
 	if end {
 		// Тест окончен
 		response := getLetterGrade(scoreII)
-		logger.Sugar().Infof("Test finish! User %d result: %s", userID, response)
+		logger.Info(fmt.Sprintf("Test finish! Result: %s", response), zap.String("user_id", strconv.Itoa(int(userID))))
 		jsonData, err := json.Marshal(state.Conversation)
 		if err != nil {
 			logger.Error("Failed to marshal user conversation to JSON: %w", zap.Error(err))
@@ -137,7 +137,7 @@ func InteractiveTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *d
 			menu.ReturnStartMenu(bot, update, BotContext, logger, response, ctx)
 			return
 		}
-		logger.Sugar().Infof("User %d added a test to the database", userID)
+		logger.Info("User added a test to the database", zap.String("user_id", strconv.Itoa(int(userID))))
 		finishInteractiveTest(bot, update, BotContext, logger, state, userID, ctx)
 		menu.ReturnStartMenu(bot, update, BotContext, logger, response, ctx)
 		return
@@ -167,7 +167,7 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain
 			// Тест завершился
 			checkscore, err := checkingAnswer(state.UserAnswers, state.CorrectAnswers)
 			if err != nil {
-				logger.Sugar().Errorf("User ID - %v: Failed test: Error: %w", userID, err)
+				logger.Error(fmt.Sprintf("Failed test: Error: %v", err), zap.String("user_id", strconv.Itoa(int(userID))))
 				menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
 				return
 			}
@@ -181,14 +181,14 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain
 				logger.Error("Failed to add test to the database: %w", zap.Error(err))
 				return
 			}
-			logger.Sugar().Infof("User %d added a test to the database ", userID)
-			logger.Sugar().Infof("Test finish! User %d result: %s", userID, response)
+			logger.Info("User added a test to the database", zap.String("user_id", strconv.Itoa(int(userID))))
+			logger.Info(fmt.Sprintf("Test finish! User result: %s", response), zap.String("user_id", strconv.Itoa(int(userID))))
 			menu.ReturnStartMenu(bot, update, BotContext, logger, response, ctx)
 			return
 		}
 		question, correctAnswer, err := parseQuestion(state.AllQuestions[len])
 		if err != nil {
-			logger.Sugar().Errorf("User %d: Failed test: Error: %v", userID, err)
+			logger.Error(fmt.Sprintf("Failed test: Error: %v", err), zap.String("user_id", strconv.Itoa(int(userID))))
 			menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
 		}
 		state.CorrectAnswers = append(state.CorrectAnswers, correctAnswer)
@@ -197,11 +197,11 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain
 		return
 	}
 	//Пользователь только начал тест
-	logger.Sugar().Infof("User %d: Is at the beginning of the test", userID)
+	logger.Info("Is at the beginning of the test", zap.String("user_id", strconv.Itoa(int(userID))))
 	//Получаем тест
 	promptfile, err := getPrompt("RunOneRequestTest.txt")
 	if err != nil {
-		logger.Sugar().Errorf("User %d: Failed to read prompt file Error: %w", userID, err)
+		logger.Error(fmt.Sprintf("Failed to read prompt file Error: %v", err), zap.String("user_id", strconv.Itoa(int(userID))))
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
 		return
 	}
@@ -211,20 +211,20 @@ func SimpleTest(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain
 	}
 	response, err := client.Chat(messages)
 	if err != nil {
-		logger.Sugar().Errorf("User %d: Failed to get question: Error: %w", userID, err)
+		logger.Error(fmt.Sprintf("Failed to get question: Error: %v", err), zap.String("user_id", strconv.Itoa(int(userID))))
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
 		return
 	}
 	allquestions := splitByQuestionNumber(response.Choices[0].Message.Content)
 	if len(allquestions) != 10 {
-		logger.Sugar().Errorf("User %d: Failed to get 10 test questions", userID)
+		logger.Error("Failed to get 10 test questions", zap.String("user_id", strconv.Itoa(int(userID))))
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
 		return
 	}
 	state.AllQuestions = allquestions
 	question, correctAnswer, err := parseQuestion(state.AllQuestions[0])
 	if err != nil {
-		logger.Sugar().Errorf("User %d: Failed test: Error: %w", userID, err)
+		logger.Error(fmt.Sprintf("Failed test: Error: %v", err), zap.String("user_id", strconv.Itoa(int(userID))))
 		menu.ReturnStartMenu(bot, update, BotContext, logger, "👋 Добро пожаловать в бот!", ctx)
 		return
 	}

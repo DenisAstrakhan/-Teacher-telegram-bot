@@ -12,7 +12,8 @@ import (
 )
 
 type redisRepository struct {
-	client *redis.Client
+	client  *redis.Client
+	timeout time.Duration
 }
 
 func (r redisRepository) SetWithTTL(key int, value models.UserState, ttl time.Duration, ctx context.Context) error {
@@ -21,7 +22,7 @@ func (r redisRepository) SetWithTTL(key int, value models.UserState, ttl time.Du
 		return errors.New("TTL must be non-negative")
 	}
 	// Создаем контекст с ограничением времени на операцию
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	//Создаём строку ключа
 	keyStr := fmt.Sprintf("user:state:%d", key)
@@ -41,7 +42,7 @@ func (r redisRepository) SetWithTTL(key int, value models.UserState, ttl time.Du
 
 func (r redisRepository) Get(key int, ctx context.Context) (models.UserState, error) {
 	// Создаем контекст с ограничением времени на операцию
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	//Создаём строку ключа
 	keyStr := fmt.Sprintf("user:state:%d", key)
@@ -64,7 +65,7 @@ func (r redisRepository) Get(key int, ctx context.Context) (models.UserState, er
 }
 
 func (r redisRepository) Exists(key int, ctx context.Context) (bool, error) {
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	//Создаём строку ключа
 	keyStr := fmt.Sprintf("user:state:%d", key)
@@ -78,8 +79,5 @@ func (r redisRepository) Exists(key int, ctx context.Context) (bool, error) {
 }
 
 func (r redisRepository) Close() error {
-	if err := r.client.Close(); err != nil {
-		return err
-	}
-	return nil
+	return r.client.Close()
 }

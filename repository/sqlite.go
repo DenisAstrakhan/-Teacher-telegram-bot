@@ -9,7 +9,8 @@ import (
 )
 
 type SQLiteRepository struct {
-	conn *sql.DB
+	conn    *sql.DB
+	timeout time.Duration
 }
 
 func (r *SQLiteRepository) InsertTecher(telegram_id int, telegram_name *string, teacher_name string, ctx context.Context) error {
@@ -17,7 +18,7 @@ func (r *SQLiteRepository) InsertTecher(telegram_id int, telegram_name *string, 
 INSERT INTO teacher (telegram_id, telegram_name, teacher_name)
 VALUES (?,?,?);
 `
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	_, err := r.conn.ExecContext(queryCtx, SQLQuery, telegram_id, telegram_name, teacher_name)
 	return err
@@ -33,7 +34,7 @@ func (r *SQLiteRepository) InsertUser(
 INSERT INTO users (telegram_id, telegram_name, full_name, teacher_ID)
 VALUES (?,?,?,?);
 `
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	_, err := r.conn.ExecContext(queryCtx, SQLQuery, telegram_id, telegram_name, full_name, teacher_ID)
 	return err
@@ -52,7 +53,7 @@ func (r *SQLiteRepository) InsertTests(
 INSERT INTO tests (subject,level, topic, test,result,time_finish,user_id)
 VALUES (?,?,?,?,?,?,?);
 `
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	_, err := r.conn.ExecContext(queryCtx, SQLQuery, subject, level, topic, test, result, time_finish, user_id)
 	return err
@@ -66,7 +67,7 @@ func (r *SQLiteRepository) UpdateRow(
 	index int,
 	ctx context.Context) error {
 	SQLQuery := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s=?", table, column, indexColumn)
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	_, err := r.conn.ExecContext(queryCtx, SQLQuery, value, index)
 	return err
@@ -74,7 +75,7 @@ func (r *SQLiteRepository) UpdateRow(
 
 func (r *SQLiteRepository) DeleteRow(table string, column string, index int, ctx context.Context) error {
 	SQLQuery := fmt.Sprintf("DELETE FROM %s WHERE %s=?", table, column)
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	_, err := r.conn.ExecContext(queryCtx, SQLQuery, index)
 	return err
@@ -87,7 +88,7 @@ FROM users
 WHERE teacher_ID = ?
 LIMIT ?
 `
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	rows, err := r.conn.QueryContext(queryCtx, SQLQuery, teacher_ID, limit)
 	if err != nil {
@@ -114,7 +115,7 @@ FROM tests
 WHERE user_id = ?
 ORDER BY id ASC LIMIT ?
 `
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	rows, err := r.conn.QueryContext(queryCtx, SQLQuery, user_id, limit)
 	if err != nil {
@@ -140,7 +141,7 @@ SELECT id,subject,level,topic,test,result
 FROM tests
 WHERE user_id=?
 `
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	rows, err := r.conn.QueryContext(queryCtx, SQLQuery, user_id)
 	if err != nil {
@@ -168,7 +169,7 @@ SELECT COUNT(*) > 0
 FROM %s 
 WHERE %s = ?;
 `, table_name, colum_name)
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	var exists bool
 	err := r.conn.QueryRowContext(queryCtx, SQLQuery, value).Scan(&exists)
@@ -187,7 +188,7 @@ func (r *SQLiteRepository) GetTeacherLists(ctx context.Context) ([]models.Teache
 SELECT telegram_id,teacher_name
 FROM teacher
 `
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	queryCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	rows, err := r.conn.QueryContext(queryCtx, SQLQuery)
 	if err != nil {
@@ -207,8 +208,5 @@ FROM teacher
 }
 
 func (r *SQLiteRepository) Close() error {
-	if err := r.conn.Close(); err != nil {
-		return err
-	}
-	return nil
+	return r.conn.Close()
 }

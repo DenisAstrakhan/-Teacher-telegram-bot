@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -17,12 +18,12 @@ func SaveVoice(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger)
 	// Получаем информацию о файле
 	file, err := bot.GetFile(tgbotapi.FileConfig{FileID: voice.FileID})
 	if err != nil {
-		logger.Sugar().Warnf("User %d: Error getting file: %w", update.Message.From.ID, err)
+		logger.Warn(fmt.Sprintf("Error getting file: %v", err), zap.String("user_id", strconv.Itoa(int(update.Message.From.ID))))
 		return
 	}
 	// Создаем папку "out", если её не существует
 	if err := os.MkdirAll("out", 0755); err != nil {
-		logger.Sugar().Warnf("User %d: Error creating directory: %w", update.Message.From.ID, err)
+		logger.Warn(fmt.Sprintf("Error creating directory: %v", err), zap.String("user_id", strconv.Itoa(int(update.Message.From.ID))))
 		return
 	}
 	// Формируем путь для сохранения
@@ -38,7 +39,7 @@ func SaveVoice(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger)
 	}
 	resp, err := httpClient.Get(fileURL)
 	if err != nil {
-		logger.Sugar().Warnf("User %d: Error downloading file: %vw", update.Message.From.ID, err)
+		logger.Warn(fmt.Sprintf("Error downloading file: %v", err), zap.String("user_id", strconv.Itoa(int(update.Message.From.ID))))
 		return
 	}
 	defer resp.Body.Close()
@@ -46,19 +47,19 @@ func SaveVoice(bot *tgbotapi.BotAPI, update tgbotapi.Update, logger *zap.Logger)
 	// Создаем файл на диске
 	outFile, err := os.Create(fileName)
 	if err != nil {
-		logger.Sugar().Warnf("User %d: Error creating file: %w", update.Message.From.ID, err)
+		logger.Warn(fmt.Sprintf("Error creating file: %v", err), zap.String("user_id", strconv.Itoa(int(update.Message.From.ID))))
 		return
 	}
 	defer outFile.Close()
 	// Копируем содержимое
 	_, err = io.Copy(outFile, resp.Body)
 	if err != nil {
-		logger.Sugar().Warnf("User %d: Error saving file: %w", update.Message.From.ID, err)
+		logger.Warn(fmt.Sprintf("Error saving file: %v", err), zap.String("user_id", strconv.Itoa(int(update.Message.From.ID))))
 		return
 	}
 
 	// Подтверждаем пользователю
-	logger.Sugar().Infof("User %d: Save voice: %s", update.Message.From.ID, fileName)
+	logger.Info(fmt.Sprintf("Save voice: %s", fileName), zap.String("user_id", strconv.Itoa(int(update.Message.From.ID))))
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "✅ Звуковое сообщение сохранено!")
 	if _, err := bot.Send(msg); err != nil {
 		logger.Error("Error sending message: %w", zap.Error(err))

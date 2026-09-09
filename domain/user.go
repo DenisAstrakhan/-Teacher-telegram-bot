@@ -7,13 +7,24 @@ import (
 )
 
 type UserRepository struct {
-	DataRepository  UserDataRepository
-	CacheRepository UserCacheRepository
+	DataRepository   UserDataRepository
+	CacheRepository  UserCacheRepository
+	LoggerRepository UserLoggerRepository
 }
 
 func (r UserRepository) Close() {
 	r.CacheRepository.Close()
 	r.DataRepository.Close()
+	r.LoggerRepository.Close()
+}
+
+type UserLoggerRepository interface {
+	Write(entrytime time.Time,
+		level string,
+		service string,
+		userID string,
+		message string) error
+	Close() error
 }
 
 type UserDataRepository interface {

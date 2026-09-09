@@ -6,6 +6,7 @@ import (
 	"TeacherBot/menu"
 	"TeacherBot/models"
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -21,7 +22,8 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 	}
 	userID := update.CallbackQuery.From.ID
 	data := update.CallbackQuery.Data
-	logger.Sugar().Infof("User %d: press \"%s\" ", userID, data)
+	//logger.Sugar().Infof("User %d: press \"%s\" ", userID, data)
+	logger.Info(fmt.Sprintf("press \"%s\"", data), zap.String("user_id", strconv.Itoa(int(userID))))
 	// Инициализируем состояние пользователя
 	userNew, state, err := initializationUserStates(logger, userID, BotContext, bot, update, ctx)
 	logger.Sugar().Debugf("userNew: %t", userNew)
@@ -33,7 +35,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 		//Защита от повторного нажатий
 		BotContext.Mtx.Lock()
 		if time.Since(state.UserLastPress) < 1000*time.Millisecond {
-			logger.Sugar().Warnf("User %d: press again", userID)
+			logger.Warn("press again", zap.String("user_id", strconv.Itoa(int(userID))))
 			BotContext.Mtx.Unlock()
 			return
 		}
@@ -66,7 +68,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 			state = models.NewUserState(&teacher)
 			state.CurrentMenu = "teacher"
 			menu.SetState(bot, update, BotContext, logger, userID, state, ctx)
-			logger.Sugar().Infof("New teacher added, ID: - %d", userID)
+			logger.Info("New teacher added", zap.String("user_id", strconv.Itoa(int(userID))))
 			msg := tgbotapi.NewMessage(userID, "Введите своё имя")
 			if _, err := bot.Send(msg); err != nil {
 				logger.Error("Error sending message: %w", zap.Error(err))
@@ -82,7 +84,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 			state = models.NewUserState(&teacher)
 			state.Data["user name"] = ""
 			menu.SetState(bot, update, BotContext, logger, userID, state, ctx)
-			logger.Sugar().Infof("New user added, ID: - %d", userID)
+			logger.Info("New user added", zap.String("user_id", strconv.Itoa(int(userID))))
 			msg := tgbotapi.NewMessage(userID, "Введите своё имя")
 			if _, err := bot.Send(msg); err != nil {
 				logger.Error("Error sending message: %w", zap.Error(err))
@@ -170,7 +172,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 		//проверяем является ли введённый текст числом
 		choice, err := strconv.Atoi(data)
 		if err != nil {
-			logger.Sugar().Infof("User %d: Failed to process callback", userID)
+			logger.Info("Failed to process callback", zap.String("user_id", strconv.Itoa(int(userID))))
 			menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!", ctx)
 			return
 		}
@@ -206,7 +208,7 @@ func HandleCallback(logger *zap.Logger, bot *tgbotapi.BotAPI, update tgbotapi.Up
 				logger.Error("Failed to add user to the database: %w", zap.Error(err))
 				return
 			}
-			logger.Sugar().Infof("User %d added to the database", userID)
+			logger.Info(" added to the database", zap.String("user_id", strconv.Itoa(int(userID))))
 			menu.SetState(bot, update, BotContext, logger, userID, state, ctx)
 			menu.ShowStartMenu(bot, update, logger, BotContext, "👋 Добро пожаловать в бот!", ctx)
 			return
@@ -263,7 +265,7 @@ func topic1(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.Bot
 		menu.SetState(bot, update, BotContext, logger, userID, state, ctx)
 		gchat.StartTest(bot, update, BotContext, logger, ctx)
 	default:
-		logger.Sugar().Warnf("User %d: Failed to distribute Topic1 across levels ", userID)
+		logger.Warn("Failed to distribute Topic1 across levels", zap.String("user_id", strconv.Itoa(int(userID))))
 	}
 }
 func topic2(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger, userID int64, state models.UserState, ctx context.Context) {
@@ -284,7 +286,7 @@ func topic2(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.Bot
 		menu.SetState(bot, update, BotContext, logger, userID, state, ctx)
 		gchat.StartTest(bot, update, BotContext, logger, ctx)
 	default:
-		logger.Sugar().Warnf("User %d: Failed to distribute Topic2 across levels ", userID)
+		logger.Warn("Failed to distribute Topic2 across levels", zap.String("user_id", strconv.Itoa(int(userID))))
 	}
 }
 func topic3(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger, userID int64, state models.UserState, ctx context.Context) {
@@ -305,7 +307,7 @@ func topic3(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.Bot
 		menu.SetState(bot, update, BotContext, logger, userID, state, ctx)
 		gchat.StartTest(bot, update, BotContext, logger, ctx)
 	default:
-		logger.Sugar().Warnf("User %d: Failed to distribute Topic3 across levels ", userID)
+		logger.Warn("Failed to distribute Topic3 across levels", zap.String("user_id", strconv.Itoa(int(userID))))
 	}
 }
 func topic4(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger, userID int64, state models.UserState, ctx context.Context) {
@@ -326,7 +328,7 @@ func topic4(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.Bot
 		menu.SetState(bot, update, BotContext, logger, userID, state, ctx)
 		gchat.StartTest(bot, update, BotContext, logger, ctx)
 	default:
-		logger.Sugar().Warnf("User %d: Failed to distribute Topic4 across levels ", userID)
+		logger.Warn("Failed to distribute Topic4 across levels", zap.String("user_id", strconv.Itoa(int(userID))))
 	}
 }
 func topic5(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.BotContext, logger *zap.Logger, userID int64, state models.UserState, ctx context.Context) {
@@ -347,6 +349,6 @@ func topic5(bot *tgbotapi.BotAPI, update tgbotapi.Update, BotContext *domain.Bot
 		menu.SetState(bot, update, BotContext, logger, userID, state, ctx)
 		gchat.StartTest(bot, update, BotContext, logger, ctx)
 	default:
-		logger.Sugar().Warnf("User %d: Failed to distribute Topic5 across levels ", userID)
+		logger.Warn("Failed to distribute Topic5 across levels", zap.String("user_id", strconv.Itoa(int(userID))))
 	}
 }
