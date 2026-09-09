@@ -55,7 +55,7 @@ A bot for conducting English language tests using GigaChat from Sber. Users sele
 ---
 
 ## 📁 Project Structure
-
+```
 TeacherBot/
 ├── dictionaries/
 │ ├── SubjectList # Allowed subjects (one per line)
@@ -78,7 +78,7 @@ TeacherBot/
 ├── go.mod
 ├── go.sum
 └── main.go # Entry point
-text
+```
 
 
 ---
